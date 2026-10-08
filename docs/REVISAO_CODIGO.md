@@ -41,3 +41,7 @@ Não foi gerado nem instalado um novo EXE nesta revisão. A compilação e os te
 ## Correção posterior de HTTPS
 
 Após reproduzir a falha da Central instalada, corrigida a geração SKI/AKI dos certificados e acrescentada compatibilidade restrita às autoridades antigas do projeto. A consulta pelo cliente corrigido ao servidor instalado passou, mantendo validação de cadeia e hostname. Suíte completa após a alteração: **23 testes aprovados em 15,94 segundos**, com os mesmos 537 avisos de depreciação. Consulte CORRECAO_HTTPS.md. A instalação atual não foi modificada.
+
+## Modos de abertura e conferência histórica
+
+Acrescentados os modos **Normal**, **Tela cheia** e **Modo quiosque** para a Mesa Eleitoral e a Urna. Cada combinação de área e modo recebe um perfil próprio do Edge, impedindo que uma janela já aberta faça o navegador ignorar o modo solicitado. A auditoria do pacote anterior está em AUDITORIA_FUNCOES_2.3.0.md. Suíte completa após esta alteração: **27 testes aprovados**, com os mesmos avisos de depreciação já conhecidos.

@@ -65,8 +65,12 @@ class Desktop:
         ttk.Label(frame, textvariable=self.devices, wraplength=810).pack(anchor="w", pady=8)
         buttons = ttk.Frame(frame); buttons.pack(fill="x", pady=(15, 10))
         if role == "central":
-            ttk.Button(buttons, text="Abrir administração", command=lambda:self.browse("/admin")).pack(side="left", padx=(0,8))
-            ttk.Button(buttons, text="Abrir Mesa Eleitoral", command=lambda:self.browse("/mesario")).pack(side="left")
+            ttk.Button(buttons, text="Abrir administração", command=lambda:self.browse("/admin", surface="admin")).pack(side="left", padx=(0,8))
+            mesa_launch = ttk.LabelFrame(frame, text="Abrir Mesa Eleitoral", padding=10)
+            mesa_launch.pack(fill="x", pady=(4, 8))
+            ttk.Button(mesa_launch, text="Normal", command=lambda:self.browse("/mesario", "normal", "mesario")).pack(side="left", padx=(0,8))
+            ttk.Button(mesa_launch, text="Tela cheia", command=lambda:self.browse("/mesario", "fullscreen", "mesario")).pack(side="left", padx=(0,8))
+            ttk.Button(mesa_launch, text="Modo quiosque", command=lambda:self.browse("/mesario", "kiosk", "mesario")).pack(side="left")
             ttk.Button(frame, text="Conectar computador da urna", command=lambda:self.browse("/admin/pairing")).pack(anchor="w", pady=8)
             ttk.Button(frame, text="Iniciar servidor novamente", command=lambda:self.background(self.start_server)).pack(anchor="w", pady=8)
             ttk.Label(frame, text="A impressora fica no computador da urna.\nMantenha esta Central aberta durante a eleição; você pode minimizá-la.", wraplength=800).pack(anchor="w", pady=12)
@@ -74,10 +78,15 @@ class Desktop:
         else:
             self.search_button = ttk.Button(buttons, text="Procurar Central", command=lambda:self.background(self.find_central))
             self.search_button.pack(side="left", padx=(0,8))
-            self.start_button = ttk.Button(buttons, text="Iniciar urna", command=lambda:self.background(self.start_urn), state="disabled")
-            self.start_button.pack(side="left")
             self.confirm_button = ttk.Button(frame, text="Códigos iguais — concluir conexão", command=lambda:self.background(self.finish_pairing), state="disabled")
             self.confirm_button.pack(anchor="w", pady=6)
+            urn_launch = ttk.LabelFrame(frame, text="Abrir Urna de Votação", padding=10)
+            urn_launch.pack(fill="x", pady=(4, 8))
+            self.start_buttons = []
+            for label, mode in (("Normal", "normal"), ("Tela cheia", "fullscreen"), ("Modo quiosque", "kiosk")):
+                button = ttk.Button(urn_launch, text=label, command=lambda selected=mode:self.background(lambda:self.start_urn(selected)), state="disabled")
+                button.pack(side="left", padx=(0,8))
+                self.start_buttons.append(button)
             printers = ttk.Frame(frame); printers.pack(fill="x", pady=(14, 5))
             ttk.Label(printers, text="Impressora USB deste computador").grid(row=0,column=0,columnspan=3,sticky="w",pady=5)
             self.printer_var = tk.StringVar(value=self.config.get("printer", ""))
@@ -126,7 +135,9 @@ class Desktop:
                 elif event=="devices": self.devices.set(args[0])
                 elif event=="ready":
                     self.ready=args[0]
-                    if self.role=="urna": self.start_button.configure(state="normal" if self.ready else "disabled")
+                    if self.role=="urna":
+                        for button in self.start_buttons:
+                            button.configure(state="normal" if self.ready else "disabled")
                 elif event=="pair":
                     self.devices.set(args[0]);self.confirm_button.configure(state="normal")
                 elif event=="paired":
@@ -186,12 +197,14 @@ class Desktop:
                 continue
         raise RuntimeError("Servidor ainda indisponível. Verifique data/hora e consulte Diagnóstico.")
 
-    def browse(self,path):
+    def browse(self, path, mode="normal", surface=None):
         def task():
             if not self.api:
                 raise RuntimeError("Aguarde o servidor ficar ativo.")
             self.api.request("/api/local/status")
-            open_browser(self.api.url+path)
+            self.browser = open_browser(self.api.url+path, mode=mode, surface=surface)
+            mode_name = {"normal":"normal", "fullscreen":"em tela cheia", "kiosk":"em modo quiosque"}[mode]
+            self.emit("notice", f"{('Mesa Eleitoral' if surface == 'mesario' else 'Administração')} aberta {mode_name}.")
         self.background(task)
 
     def refresh_printers(self):
@@ -203,7 +216,8 @@ class Desktop:
         self.config["mode"]="escpos" if self.mode_var.get()=="Térmica ESC/POS" else "windows"
         save_config(self.config)
         self.ready=False
-        self.start_button.configure(state="disabled")
+        for button in self.start_buttons:
+            button.configure(state="disabled")
 
     def test_printer(self):
         if not font_ready(): raise RuntimeError("Instale Atkinson Hyperlegible Regular e Bold e tente novamente.")
@@ -273,11 +287,13 @@ class Desktop:
                     self.emit("notice","O endereço da Central mudou. Feche a janela de votação com Alt+F4 e clique Iniciar urna novamente para retomar.")
                 return
 
-    def start_urn(self):
+    def start_urn(self, mode="kiosk"):
         if not self.ready or not self.api: raise RuntimeError("Conclua a conexão e o teste da impressora antes de iniciar.")
         ticket=self.api.request("/api/native/browser-ticket",{})
-        self.browser=open_browser(self.api.url+ticket["path"],kiosk=True)
-        self.emit("notice","Urna aberta em tela cheia. Alt+F4 fecha a tela de votação e retorna a este aplicativo.")
+        self.browser=open_browser(self.api.url+ticket["path"],mode=mode,surface="urna")
+        mode_name={"normal":"normal", "fullscreen":"em tela cheia", "kiosk":"em modo quiosque"}[mode]
+        exit_hint="F11 alterna a tela cheia; Alt+F4 fecha a votação." if mode=="fullscreen" else "Alt+F4 fecha a tela de votação e retorna a este aplicativo."
+        self.emit("notice",f"Urna aberta {mode_name}. {exit_hint}")
 
     def monitor(self):
         failures=0

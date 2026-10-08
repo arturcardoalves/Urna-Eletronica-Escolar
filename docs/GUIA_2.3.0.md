@@ -18,6 +18,8 @@ Conecte os dois PCs por cabo às portas **LAN** do mesmo roteador. Deixe a porta
 4. Prepare os dados da eleição, as chapas, os eleitores e um usuário **MESÁRIO**. Ainda não lacre a eleição.
 5. Na Central, clique **Conectar computador da urna**. Entre como administrador, se necessário, e clique **Permitir conexão por 5 minutos**.
 
+Para a Mesa Eleitoral, a Central oferece três formas de abertura: **Normal**, **Tela cheia** e **Modo quiosque**. O modo normal mostra toda a interface do navegador. Tela cheia pode ser alternada com **F11**. O modo quiosque esconde os controles do navegador e é o recomendado no dia da eleição; use **Alt+F4** para fechá-lo.
+
 Não há seleção de impressora no computador da mesa. Mantenha a janela da Central aberta ou minimizada. Ela controla o servidor; o fechamento pede confirmação, e o sistema recusa o desligamento normal enquanto a votação estiver aberta. Se o Windows ou o processo encerrar inesperadamente, a urna perderá a conexão e bloqueará o uso até a recuperação.
 
 ## Computador 2 — Urna de votação
@@ -27,7 +29,7 @@ Não há seleção de impressora no computador da mesa. Mantenha a janela da Cen
 3. Compare o código mostrado nos dois PCs. Na Central, aprove somente se for igual. Na urna, clique **Códigos iguais — concluir conexão**.
 4. Selecione a impressora USB instalada no Windows. Comece por **Driver Windows**. Use ESC/POS somente se o modelo e o driver forem compatíveis e o teste sair correto.
 5. Clique **Imprimir teste e conferir** e confirme apenas se o papel sair completo, legível e com o corte esperado.
-6. Aguarde **Servidor conectado — HTTPS verificado** e clique **Iniciar urna** para abrir a cabine em tela cheia.
+6. Aguarde **Servidor conectado — HTTPS verificado** e escolha **Normal**, **Tela cheia** ou **Modo quiosque** na seção **Abrir Urna de Votação**. O modo quiosque é o recomendado no dia da eleição; use **Alt+F4** para retornar ao aplicativo.
 
 A confirmação de impressão deve ser repetida depois de reiniciar o aplicativo ou mudar a seleção/modo. Um driver pode informar “disponível” mesmo sem papel; o teste físico continua necessário. Não selecione impressoras PDF ou virtuais.
 

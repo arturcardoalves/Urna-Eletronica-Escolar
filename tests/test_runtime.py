@@ -1,7 +1,7 @@
 import sqlite3
 from pathlib import Path
 import pytest
-from native_runtime import PrintJournal, Api
+from native_runtime import PrintJournal, Api, APP_HOME, browser_arguments
 from upgrade_guard import check_and_backup
 
 
@@ -53,6 +53,28 @@ def test_bootstrap_never_sends_credentials():
     api=Api('https://127.0.0.1:8443',token='secret',bootstrap=True)
     with pytest.raises(ValueError):api.request('/api/deployment/identity')
     with pytest.raises(ValueError):Api('https://127.0.0.1:8443',bootstrap=True).request('/api/native/print-job')
+
+
+@pytest.mark.parametrize('mode,required,forbidden', [
+    ('normal', set(), {'--start-fullscreen', '--kiosk'}),
+    ('fullscreen', {'--start-fullscreen'}, {'--kiosk'}),
+    ('kiosk', {'--kiosk', '--edge-kiosk-type=fullscreen', '--kiosk-idle-timeout-minutes=0'}, {'--start-fullscreen'}),
+])
+def test_browser_modes_use_dedicated_surface_profile(mode, required, forbidden):
+    url = 'https://127.0.0.1:8443/mesario'
+    args = browser_arguments(url, mode, 'mesario')
+    assert ('--new-window' in args) is (mode != 'kiosk')
+    assert url in args
+    assert '--user-data-dir=' + str(APP_HOME / ('edge-mesario-' + mode)) in args
+    assert required.issubset(args)
+    assert forbidden.isdisjoint(args)
+
+
+def test_browser_mode_and_surface_are_validated():
+    with pytest.raises(ValueError):
+        browser_arguments('https://127.0.0.1:8443', 'unknown', 'admin')
+    with pytest.raises(ValueError):
+        browser_arguments('https://127.0.0.1:8443', 'normal', 'unknown')
 
 
 @pytest.mark.parametrize('state',['SEALED','OPEN'])

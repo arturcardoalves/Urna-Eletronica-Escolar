@@ -142,13 +142,31 @@ def edge_path():
     raise RuntimeError("Microsoft Edge não encontrado. Instale o Edge antes de usar este computador.")
 
 
-def open_browser(url, kiosk=False):
-    profile = "edge-urna" if kiosk else "edge-mesa" if urllib.parse.urlparse(url).path == "/mesario" else "edge-central"
-    args = [str(edge_path()), "--no-first-run", "--user-data-dir=" + str(APP_HOME / profile)]
-    if kiosk:
+def browser_arguments(url, mode="normal", surface=None):
+    """Build the Edge command for the requested visible operating mode."""
+    if mode not in ("normal", "fullscreen", "kiosk"):
+        raise ValueError("Modo de abertura inválido.")
+    if surface not in (None, "admin", "mesario", "urna"):
+        raise ValueError("Área do navegador inválida.")
+    if surface is None:
+        path = urllib.parse.urlparse(url).path
+        surface = "mesario" if path == "/mesario" else "admin"
+    # A dedicated profile per mode forces Edge to start a distinct process.
+    # Otherwise an already-open normal window may absorb a kiosk/fullscreen
+    # request and silently ignore the requested display mode.
+    profile = APP_HOME / ("edge-" + surface + "-" + mode)
+    args = ["--no-first-run", "--user-data-dir=" + str(profile)]
+    if mode == "fullscreen":
+        args += ["--new-window", "--start-fullscreen", url]
+    elif mode == "kiosk":
         args += ["--kiosk", url, "--edge-kiosk-type=fullscreen", "--kiosk-idle-timeout-minutes=0"]
     else:
-        args += [url]
+        args += ["--new-window", url]
+    return args
+
+
+def open_browser(url, mode="normal", surface=None):
+    args = [str(edge_path()), *browser_arguments(url, mode, surface)]
     return subprocess.Popen(args, creationflags=CREATE_FLAGS)
 
 

@@ -82,7 +82,7 @@
           {% if election.zero_snapshot_json %}<a class="btn secondary" target="_blank" href="/reports/zero.pdf">Visualizar zerésima emitida</a>{% endif %}
           {% if election.final_tally_json %}<a class="btn success" target="_blank" href="/reports/result.pdf">Boletim final</a>{% endif %}
         </div>
-        {% if election.state == 'SEALED' %}<div class="info-callout">A zerésima e a abertura serão comandadas pela Mesa Eleitoral. Ao abrir, o sistema imprimirá automaticamente a zerésima na impressora da mesa e nas impressoras das urnas.</div>{% endif %}
+        {% if election.state == 'SEALED' %}<div class="info-callout">A zerésima e a abertura serão comandadas pela Mesa Eleitoral. Ao abrir, o sistema imprimirá automaticamente a zerésima nas impressoras das urnas.</div>{% endif %}
         {% if election.state == 'OPEN' %}<div class="info-callout">A votação está em andamento. Configurações críticas permanecem bloqueadas até o encerramento pela Mesa Eleitoral.</div>{% endif %}
       </article>
       <article class="panel">

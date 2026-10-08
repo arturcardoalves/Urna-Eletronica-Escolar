@@ -2,7 +2,7 @@
 
 Código para dois computadores Windows: Central + Mesa Eleitoral e Urna + impressora USB. Esta revisão limpa corrige o bloqueio SQLite no teste do aplicativo e mantém a versão 2.3.0.
 
-Também corrige a Central que não reconhecia o servidor ativo por incompatibilidade do certificado com Python 3.13. [Detalhes da correção HTTPS](docs/CORRECAO_HTTPS.md). Total após essa correção: 23 testes aprovados.
+Também corrige a Central que não reconhecia o servidor ativo por incompatibilidade do certificado com Python 3.13 e oferece abertura Normal, Tela cheia e Quiosque para Mesa e Urna. [Detalhes da correção HTTPS](docs/CORRECAO_HTTPS.md) · [Auditoria das funções](docs/AUDITORIA_FUNCOES_2.3.0.md). Total atual: 27 testes aprovados.
 
 ## Gerar o EXE
 
