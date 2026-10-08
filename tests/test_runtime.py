@@ -1,0 +1,75 @@
+import sqlite3
+from pathlib import Path
+import pytest
+from native_runtime import PrintJournal, Api
+from upgrade_guard import check_and_backup
+
+
+def test_journal_closes_database_on_success_and_rollback(tmp_path):
+    journal = PrintJournal(tmp_path / 'journal.db')
+    with journal.connect() as connection:
+        connection.execute("INSERT INTO jobs VALUES ('committed', 'SENT')")
+    with pytest.raises(sqlite3.ProgrammingError):
+        connection.execute('SELECT 1')
+    with pytest.raises(RuntimeError):
+        with journal.connect() as failed_connection:
+            failed_connection.execute("INSERT INTO jobs VALUES ('rolled-back', 'STARTED')")
+            raise RuntimeError('interrupted transaction')
+    with pytest.raises(sqlite3.ProgrammingError):
+        failed_connection.execute('SELECT 1')
+    with journal.connect() as check:
+        assert check.execute('SELECT id FROM jobs').fetchall() == [('committed',)]
+    # This is the Windows failure that previously stopped the frozen self-test.
+    journal.path.unlink()
+
+
+def test_successful_print_ack_retry_does_not_repeat(tmp_path):
+    journal = PrintJournal(tmp_path/'journal.db'); calls=[]
+    assert journal.perform('job',lambda:calls.append(1))
+    journal = PrintJournal(tmp_path/'journal.db')
+    assert journal.perform('job',lambda:calls.append(2))
+    assert calls == [1]
+
+
+def test_interrupted_print_requires_operator(tmp_path):
+    journal = PrintJournal(tmp_path/'journal.db'); calls=[]
+    with journal.connect() as db:
+        db.execute("INSERT INTO jobs VALUES ('job', 'STARTED')")
+    assert not journal.perform('job', lambda:calls.append(1))
+    assert not calls
+
+
+def test_failed_print_only_retries_with_new_authorized_job(tmp_path):
+    journal=PrintJournal(tmp_path/'journal.db'); calls=[]
+    def fail():
+        calls.append(1);raise OSError('paper failure')
+    assert not journal.perform('a',fail)
+    assert not journal.perform('a',fail)
+    assert journal.perform('b',lambda:calls.append(2))
+    assert calls == [1,2]
+
+
+def test_bootstrap_never_sends_credentials():
+    api=Api('https://127.0.0.1:8443',token='secret',bootstrap=True)
+    with pytest.raises(ValueError):api.request('/api/deployment/identity')
+    with pytest.raises(ValueError):Api('https://127.0.0.1:8443',bootstrap=True).request('/api/native/print-job')
+
+
+@pytest.mark.parametrize('state',['SEALED','OPEN'])
+def test_update_blocks_active_election(tmp_path,state):
+    data=tmp_path/'Servidor';data.mkdir()
+    with sqlite3.connect(data/'urna_escolar.db') as db:
+        db.execute('CREATE TABLE elections (state TEXT)');db.execute('INSERT INTO elections VALUES (?)',(state,))
+    with pytest.raises(RuntimeError):check_and_backup(tmp_path)
+    assert not (tmp_path/'Backups').exists()
+
+
+def test_update_backs_up_database_and_keys(tmp_path):
+    data=tmp_path/'Servidor';data.mkdir();(data/'key.txt').write_text('test-key')
+    with sqlite3.connect(data/'urna_escolar.db') as db:
+        db.execute('CREATE TABLE elections (state TEXT)');db.execute("INSERT INTO elections VALUES ('CONFIG')")
+    check_and_backup(tmp_path)
+    backup=next((tmp_path/'Backups').iterdir())/'Servidor'
+    assert (backup/'key.txt').read_text()=='test-key'
+    with sqlite3.connect(backup/'urna_escolar.db') as db:
+        assert db.execute('SELECT state FROM elections').fetchone()[0]=='CONFIG'

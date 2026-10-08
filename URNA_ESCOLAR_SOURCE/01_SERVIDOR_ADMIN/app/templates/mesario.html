@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Mesa Eleitoral{% endblock %}
+{% block body %}
+<div class="station-page" data-state="{{ election.state }}" data-identification="{{ '1' if election.voter_identification_enabled else '0' }}" data-lookup-mode="{{ election.voter_lookup_mode }}">
+  <header class="station-header">
+    <div class="station-brand"><span class="eyebrow light">MESA ELEITORAL</span><h1>{{ election.name }}</h1><p>{{ election.institution_name }}</p></div>
+    <div class="station-header-right">
+      <div class="station-clock-block"><time class="live-clock station-clock" data-with-date="1"></time><small>Horário da estação</small></div>
+      <div class="station-user"><span>{{ user.display_name }}</span><small>Mesário · v{{ app_version }}</small></div>
+      <span id="stationStatePill" class="station-state station-state-{{ election.state|lower }}">{{ election.state }}</span>
+    </div>
+  </header>
+
+  <div id="paperChangeAlert" class="paper-change-alert hidden" role="status" aria-live="polite">
+    <div><span class="paper-change-kicker">SUPRIMENTO DA URNA</span><b id="paperChangeTitle">Troca de papel necessária</b><small id="paperChangeText"></small></div>
+    <button type="button" class="btn warning" id="paperChangeConfirm">PAPEL TROCADO</button>
+  </div>
+
+  <section id="stationPreopen" class="station-preopen {% if election.state not in ['CONFIG','SEALED'] %}hidden{% endif %}">
+    <div class="preopen-card">
+      <div id="preopenConfigState" class="preopen-state-block {% if election.state != 'CONFIG' %}hidden{% endif %}">
+        <div class="preopen-icon">⚙</div><span class="eyebrow">PREPARAÇÃO</span><h1>Aguardando lacração</h1>
+        <p>O Administrador ainda está preparando a eleição. Quando a lacração for concluída, esta tela mudará automaticamente para a abertura.</p>
+        <div class="station-network-note"><b>Mesa no mesmo computador do servidor</b><code>https://127.0.0.1:8443/login</code><small>É permitido usar Servidor/Admin e Mesa no mesmo computador, em sessões de navegador separadas.</small></div>
+      </div>
+
+      <div id="preopenSealedState" class="preopen-state-block {% if election.state != 'SEALED' %}hidden{% endif %}">
+        <div class="preopen-icon ready">✓</div><span class="eyebrow">ELEIÇÃO LACRADA</span><h1>Pronta para preparar a abertura</h1>
+        <p>O Mesário confirma a própria senha. O sistema verifica a integridade e envia a Zerésima para as urnas. A chave da eleição fica protegida internamente no servidor.</p>
+        <div class="preopen-checks" id="preopenChecks">{% for c in preflight if c.key not in ['zero','zero_printed'] %}<div class="preopen-check {{ 'ok' if c.ok else ('warn' if not c.blocking else 'bad') }}" data-check="{{ c.key }}"><span>{{ '✓' if c.ok else ('!' if not c.blocking else '×') }}</span><div><b>{{ c.label }}</b><small>{{ c.detail }}</small></div></div>{% endfor %}</div>
+        <button class="btn success station-primary-action" id="openElectionBtn">PREPARAR ABERTURA</button><div id="preopenStatus" class="station-operation-status"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="stationClosed" class="station-closed {% if election.state != 'CLOSED' %}hidden{% endif %}">
+    <div class="station-closed-icon">✓</div><span class="eyebrow">VOTAÇÃO ENCERRADA</span><h1>ELEIÇÃO FINALIZADA</h1><p>A votação foi encerrada. O boletim final permanece disponível para consulta e reimpressão.</p>
+    {% if election.final_tally_json %}<div class="closed-actions"><a class="btn secondary" target="_blank" href="/reports/result.pdf">Visualizar boletim final</a></div><div id="closedPrintStatus" class="station-operation-status"></div>{% endif %}
+  </section>
+
+  <main id="stationControls" class="station-layout {% if election.state != 'OPEN' %}hidden{% endif %}">
+    <section class="station-main {% if election.voter_identification_enabled %}lookup-mode-{{ election.voter_lookup_mode|lower|replace('_', '-') }}{% endif %}">
+      {% if election.voter_identification_enabled %}
+      <div class="station-step"><span class="step-number">1</span><div><b>Identificar eleitor</b><small>{% if election.voter_lookup_mode=='LIST_ONLY' %}Selecione a turma e o aluno na lista{% elif election.voter_lookup_mode=='SEARCH_LIST' %}Pesquise ou selecione a turma e o aluno na lista{% else %}Matrícula ou pesquisa pelo nome{% endif %}</small></div><span class="station-open-badge">VOTAÇÃO ABERTA</span></div>
+      {% if election.voter_lookup_mode != 'LIST_ONLY' %}
+      <div class="lookup-box lookup-box-compact">
+        <label for="search">Busca por aluno</label>
+        <div class="lookup-row"><div class="lookup-input-wrap"><input id="search" autofocus autocomplete="off" spellcheck="false" placeholder="Digite matrícula ou nome"></div><button class="btn primary large" id="searchBtn">Procurar</button></div>
+      </div>
+      <div id="results" class="results-area search-result-slot"><div class="idle-message compact"><span>Resultado da pesquisa</span><small>Digite matrícula ou parte do nome.</small></div></div>
+      {% endif %}
+
+      {% if election.voter_lookup_mode in ['SEARCH_LIST','LIST_ONLY'] %}
+      <section class="voter-browser {% if election.voter_lookup_mode=='LIST_ONLY' %}voter-browser-list-only{% endif %}" id="voterBrowser">
+        <div class="voter-browser-head"><div><span class="eyebrow">LISTA DE ELEITORES</span><h2>Turmas e alunos</h2></div><span id="visibleVoterCount" class="counter">carregando…</span></div>
+        <div class="class-filter-viewport" aria-label="Navegação por turmas">
+          <div class="class-filter-grid" id="classFilters"><button type="button" class="class-filter active" data-class="ALL">TODOS</button>{% for cls in classes %}<button type="button" class="class-filter" data-class="{{ cls }}" title="{{ cls }}">{{ cls }}</button>{% endfor %}</div>
+        </div>
+        <div id="voterList" class="voter-list-grid"><div class="loading-state">Carregando lista…</div></div>
+      </section>
+      {% endif %}
+      {% else %}
+      <div class="station-step"><span class="step-number">1</span><div><b>Fluxo automático sem identificação nominal</b><small>A Mesa acompanha as urnas; não é necessário liberar cada pessoa.</small></div><span class="station-open-badge">VOTAÇÃO ABERTA</span></div>
+      <section class="anonymous-station-panel">
+        <div class="anonymous-station-copy"><span class="eyebrow">SEM CADASTRO DE ELEITORES</span><h2>Acompanhe quando cada urna está livre</h2><p>Quando aparecer <b>LIVRE</b>, o próximo eleitor pode se dirigir à cabine. Ao iniciar um voto, a urna muda para <b>EM VOTAÇÃO</b>. Depois da confirmação, ela volta automaticamente para <b>LIVRE</b>.</p></div>
+        <div id="anonymousUrnBoard" class="anonymous-urn-board">{% for urn in urns %}<article class="anonymous-urn-card" data-anon-urn="{{ urn.code }}"><span>{{ urn.name }}</span><strong>CARREGANDO</strong><small>{{ urn.code }}</small></article>{% endfor %}</div>
+      </section>
+      {% endif %}
+    </section>
+
+    <aside class="station-side">
+      <section class="side-panel urn-panel"><div class="side-head"><span>URNAS</span><b id="electionState">{{ election.state }}</b></div><div id="urnList">{% for urn in urns %}<div class="station-urn" data-urn="{{ urn.code }}"><i class="dot"></i><div><strong>{{ urn.name }}</strong><small>{{ urn.code }}</small></div><span class="urn-status">{{ urn.status }}</span></div>{% endfor %}</div></section>
+      {% if election.voter_identification_enabled %}
+      <section class="side-panel counts-panel"><div><span>Eleitores</span><b id="countTotal">{{ total }}</b></div><div><span>Compareceram</span><b id="countVoted">{{ voted }}</b></div><div><span>Restantes</span><b id="countRemaining">{{ total-voted }}</b></div></section>
+      {% else %}
+      <section class="side-panel counts-panel"><div><span>Votos registrados</span><b id="countVoted">{{ voted }}</b></div><div><span>Identificação</span><b>DESATIVADA</b></div></section>
+      {% endif %}
+      <section class="side-panel station-tools"><button type="button" class="station-tool danger" id="closeElectionBtn"><b>Encerrar votação</b><span>Requer confirmação e senha do Mesário</span></button></section>
+    </aside>
+  </main>
+
+  {% if election.voter_identification_enabled %}
+  <div class="station-modal hidden" id="voterConfirmModal" role="dialog" aria-modal="true" aria-labelledby="voterConfirmTitle"><div class="station-modal-card voter-confirm-card"><div class="modal-head"><div><span class="eyebrow">CONFIRMAR ELEITOR</span><h2 id="voterConfirmTitle">Liberar votação</h2></div><button type="button" class="modal-close" data-close="voterConfirmModal">×</button></div><p class="voter-confirm-question">Confirma que <strong id="confirmVoterName"></strong> vai votar agora?</p><div id="confirmVoterMeta" class="voter-confirm-meta"></div><div id="confirmUrnChoices" class="confirm-urn-choices"></div><div id="confirmVoterStatus" class="station-operation-status" aria-live="polite"></div><div class="modal-actions"><button type="button" class="btn secondary" data-close="voterConfirmModal">Cancelar</button><button type="button" class="btn success" id="confirmVoterBtn">CONFIRMAR</button></div></div></div>
+  {% endif %}
+
+  <div class="station-modal hidden" id="openElectionModal" role="dialog" aria-modal="true"><div class="station-modal-card opening-modal-card"><div class="modal-head"><div><span class="eyebrow">ABERTURA DA ELEIÇÃO</span><h2>Preparar Zerésima e iniciar votação</h2></div><button type="button" class="modal-close" data-close="openElectionModal">×</button></div><p class="modal-copy">A preparação não abre a votação. Primeiro a Zerésima é impressa e confirmada em todas as urnas. Depois o botão <b>INICIAR VOTAÇÃO</b> será liberado. Não há pendrive, mídia de publicação ou chave externa.</p>
+    <form id="openElectionForm"><label>Sua senha de Mesário<input type="password" name="password" autocomplete="current-password" required></label><p class="field-hint">A chave criptográfica da eleição é gerada e guardada internamente no Servidor/Admin.</p><div class="modal-actions opening-prepare-actions"><button type="button" class="btn secondary" data-close="openElectionModal">Cancelar</button><button class="btn primary" id="prepareOpeningBtn">PREPARAR ZERÉSIMA</button></div></form>
+    <div id="openingProgress" class="opening-progress hidden"><div class="opening-check" id="openingIntegrity"><span>…</span><div><b>Integridade da eleição</b><small>Aguardando verificação</small></div></div><div id="openingUrns" class="opening-urns"></div><div id="openElectionStatus" class="station-operation-status"></div><div class="modal-actions"><button type="button" class="btn secondary" data-close="openElectionModal">Fechar</button><button type="button" class="btn success" id="commitOpeningBtn" disabled>INICIAR VOTAÇÃO</button></div></div>
+  </div></div>
+
+  <div class="station-modal hidden" id="closeElectionModal" role="dialog" aria-modal="true"><div class="station-modal-card close-modal-card"><div class="modal-head"><div><span class="eyebrow">ENCERRAMENTO</span><h2>Encerrar votação</h2></div><button type="button" class="modal-close" data-close="closeElectionModal">×</button></div><div class="warning-box"><b>Tem certeza?</b><span>Depois da confirmação, novos votos serão bloqueados. O sistema usa a chave interna para fazer a apuração e imprime o boletim final. Não será solicitado USB ou arquivo de chave.</span></div><form id="closeElectionForm" novalidate><label>Sua senha<input id="closeUserPassword" type="password" name="password" autocomplete="current-password" required></label><label class="confirm-line"><input type="checkbox" name="confirm_close" value="yes" required> Confirmo que desejo encerrar a votação.</label><div id="closeElectionStatus" class="station-operation-status"></div><div class="modal-actions"><button type="button" class="btn secondary" data-close="closeElectionModal">Cancelar</button><button type="button" class="btn danger" id="closeSubmitBtn">ENCERRAR E APURAR</button></div></form></div></div>
+</div>
+<script>window.URN_CODES={{ urns|map(attribute='code')|list|tojson }};</script>
+<script src="/static/mesario.js?v={{ app_version }}"></script>
+{% endblock %}

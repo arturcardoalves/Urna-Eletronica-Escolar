@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+{% block body %}
+<div class="card" style="max-width:850px;margin:2rem auto">
+<h1>Conectar computador da urna</h1>
+<p>Instale o mesmo programa no segundo computador e escolha <b>Urna de votação</b>. Mantenha os dois conectados ao mesmo roteador por cabo.</p>
+<button id="enablePairing" class="btn primary">Permitir conexão por 5 minutos</button>
+<p id="pairStatus" role="status"></p>
+<div id="pairRequests"></div>
+<p>Compare o código nas duas telas antes de aprovar. Depois, confirme no computador da urna.</p>
+<a href="/admin?section=urns">Voltar à administração</a>
+</div>
+<script src="/static/pairing.js"></script>
+{% endblock %}

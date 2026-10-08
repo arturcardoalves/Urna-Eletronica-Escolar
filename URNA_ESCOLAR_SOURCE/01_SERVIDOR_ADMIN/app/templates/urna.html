@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}{{ urn.name }}{% endblock %}
+{% block body %}
+<main class="urn-shell" data-urn="{{ urn.code }}" data-mode="{{ urn.voting_mode_override if urn.voting_mode_override and urn.voting_mode_override != 'INHERIT' else election.voting_mode }}" data-blank="{{ '1' if election.allow_blank else '0' }}" data-sound="{{ '1' if election.sound_enabled else '0' }}" data-sound-url="{{ final_sound_url }}?v={{ app_version }}" data-key-confirm="{{ election.keyboard_confirm_key }}" data-key-correct="{{ election.keyboard_correct_key }}" data-key-blank="{{ election.keyboard_blank_key }}" data-initial-state="{{ election.state }}" data-identification="{{ '1' if election.voter_identification_enabled else '0' }}">
+  <section id="deviceSetup" class="urn-setup-card hidden">
+    <div class="brand-mark large">UE</div><span class="eyebrow">CONFIGURAÇÃO DO DISPOSITIVO</span><h1>{{ urn.name }}</h1>
+    <p>Escolha a impressora conectada a este computador. A configuração fica vinculada a esta urna.</p>
+    <div class="device-form">
+      <label>Senha do dispositivo<input id="deviceSecret" type="password" placeholder="Senha cadastrada no administrador"></label>
+      <label>Agente de impressão<input id="printAgentUrl" value="{{ urn.print_agent_url or 'http://127.0.0.1:8765' }}"></label>
+      <label>Modo de impressão<select id="urnPrinterMode"><option value="windows" {% if urn.printer_mode != 'escpos' %}selected{% endif %}>Windows / driver da impressora</option><option value="escpos" {% if urn.printer_mode == 'escpos' %}selected{% endif %}>ESC/POS RAW — térmica 80 mm</option></select><small class="field-hint"><b>Windows / driver:</b> use em impressora A4/jato de tinta ou em térmica instalada com driver; o agente detecta folha larga ou rolo estreito e dimensiona a cédula automaticamente. <b>ESC/POS RAW:</b> recomendado para térmica 80 mm compatível, com corte parcial. O modelo usa texto preto sobre branco, sem faixas pretas.</small></label>
+      <div class="printer-discovery"><button type="button" class="btn secondary" id="discoverPrinters">Detectar impressoras</button><button type="button" class="btn secondary" id="testPrinter">Teste de impressão</button><span id="agentStatus" class="agent-status">Agente não verificado</span></div>
+      <label>Impressora da cabine<select id="urnPrinter"><option value="{{ urn.printer_name or '' }}">{{ urn.printer_name or 'Detecte as impressoras...' }}</option></select></label>
+    </div>
+    <div class="device-setup-actions"><button type="button" class="btn secondary" id="enterFullscreenSetup">Tela cheia</button><button type="button" class="btn secondary" id="cancelDeviceSettings">Cancelar</button><button class="btn primary large" id="saveSecret">Salvar configuração</button></div>
+  </section>
+
+  <section id="bootCheck" class="urn-screen urn-boot-screen hidden"><div class="urn-top"><div><b>{{ election.name }}</b><span>{{ urn.name }}</span></div><div class="secure-label">INICIALIZAÇÃO</div></div><div class="urn-boot-body"><div class="boot-spinner"></div><span class="eyebrow">VERIFICAÇÃO DE INTEGRIDADE</span><h1>Preparando a urna</h1><p>Conferindo software, configuração lacrada, chave interna e conexão segura.</p><div id="bootChecks" class="boot-checks"></div></div></section>
+
+  <section id="integrityBlocked" class="urn-screen urn-blocked-screen hidden"><div class="blocked-mark">!</div><span class="eyebrow">SEGURANÇA</span><h1>URNA BLOQUEADA</h1><p id="integrityBlockedReason">A integridade do sistema não foi confirmada.</p><small>Procure a Mesa Eleitoral. Não prossiga com a votação neste dispositivo.</small></section>
+
+  <section id="waiting" class="urn-screen waiting-screen hidden"><div class="urn-top"><div><b>{{ election.name }}</b><span>{{ urn.name }}</span></div><div class="urn-top-actions"><time class="live-clock urn-clock-inline" data-with-date="1"></time><div class="urn-settings-wrap"><button type="button" class="urn-settings-button" id="openUrnQuickSettings" aria-label="Configurações" title="Configurações">⚙</button><div class="urn-settings-menu hidden" id="urnQuickSettings"><button type="button" id="quickFullscreen">Tela cheia</button><button type="button" id="quickDeviceSettings">Impressora e dispositivo</button></div></div><div class="secure-label">PRONTA</div></div></div><div class="waiting-body"><div class="waiting-symbol"><span></span></div>{% if election.voter_identification_enabled %}<h1>AGUARDANDO ELEITOR</h1><p>A urna será liberada pela mesa eleitoral.</p>{% else %}<h1>URNA LIVRE</h1><p>Pronta para o próximo eleitor. A votação começa ao selecionar ou digitar uma chapa.</p>{% endif %}</div></section>
+
+  <section id="ballot" class="urn-screen hidden">
+    <header class="urn-top"><div><b>{{ election.name }}</b><span>{{ urn.name }}</span></div><div class="urn-top-actions"><time class="live-clock urn-clock-inline" data-with-date="1"></time><div class="secure-label">VOTAÇÃO</div></div></header>
+    <div class="urn-progress"><span class="active"></span><span></span><small>Confira seu voto antes de confirmar</small></div>
+
+    <section id="selectionMode" class="ballot-content selection-mode {% if (urn.voting_mode_override if urn.voting_mode_override and urn.voting_mode_override != 'INHERIT' else election.voting_mode) != 'SELECTION' %}hidden{% endif %}">
+      <div id="selectionList"><span class="ballot-kicker">GRÊMIO ESTUDANTIL</span><h1>Escolha uma chapa</h1><p class="ballot-help">Selecione a chapa desejada, confira os dados e confirme.</p>
+        <div class="slate-grid" id="slateGrid">{% for s in slates %}<button class="slate-option" data-number="{{ s.number }}"><span class="slate-number">{{ '%02d'|format(s.number) }}</span><span class="slate-photo-slot">{% if s.logo_path %}<img src="{{ s.logo_path }}" alt="Logo da chapa {{ s.number }}">{% else %}<span class="slate-photo-placeholder">FOTO</span>{% endif %}</span><span class="slate-info"><b>{{ s.name }}</b>{% if election.show_members_on_ballot %}{% for m in s.members[:2] %}<small><strong>{{ m.role_name }}</strong> {{ m.person_name }}</small>{% endfor %}{% endif %}</span></button>{% endfor %}</div>
+        <div class="selection-footer"><div></div><div class="slate-page-controls hidden" id="slatePageControls"><button type="button" id="slatePrev">‹ Anterior</button><span id="slatePageLabel"></span><button type="button" id="slateNext">Próxima ›</button></div>{% if election.allow_blank %}<button class="blank-option" id="blankChoice">BRANCO</button>{% else %}<div></div>{% endif %}</div>
+      </div>
+      <div id="selectionReview" class="review-card hidden"><span class="ballot-kicker">CONFIRA SEU VOTO</span><div id="reviewContent"></div><div class="review-actions"><button class="review-correct" id="selectionCorrect">CORRIGIR</button><button class="review-confirm" id="selectionConfirm">CONFIRMAR</button></div></div>
+    </section>
+
+    <section id="numericMode" class="ballot-content numeric-content {% if (urn.voting_mode_override if urn.voting_mode_override and urn.voting_mode_override != 'INHERIT' else election.voting_mode) != 'NUMERIC' %}hidden{% endif %}">
+      <span class="ballot-kicker">GRÊMIO ESTUDANTIL</span><h1 class="numeric-title">Digite o número da chapa</h1>
+      <div class="numeric-layout single"><div class="numeric-main"><div class="number-column"><span class="number-caption">NÚMERO</span><div class="number-display" id="numberDisplay"><span>_</span><span>_</span></div></div><div id="candidatePreview" class="candidate-preview"><div class="candidate-empty"><b>AGUARDANDO DIGITAÇÃO</b><span>Digite os dois números da chapa.</span></div></div></div></div>
+      <div id="numericNotice" class="numeric-notice"></div>
+      <div class="urn-instruction-bar"><b>Aperte a tecla:</b><div class="instruction-lines"><span><strong>CONFIRMA</strong> para confirmar este voto</span><span><strong>CORRIGE</strong> para reiniciar este voto</span></div></div>
+    </section>
+  </section>
+
+  <section id="done" class="urn-screen done-screen hidden"><h1>FIM</h1><p>VOTOU</p></section>
+  <section id="closed" class="urn-screen closed-screen hidden"><div class="closed-symbol">✓</div><span class="eyebrow">MESA ENCERRADA</span><h1>ELEIÇÃO FINALIZADA</h1><p>Esta urna está encerrada. Os documentos finais podem ser impressos automaticamente após a apuração.</p><button type="button" class="urn-maintenance closed-config" id="openDeviceSettingsClosed">Configurar dispositivo / impressora</button></section>
+</main>
+<script>
+window.SLATE_DATA={{ slates|map(attribute='number')|list|tojson }};
+window.SLATE_DETAILS={
+{% for s in slates %}"{{ s.number }}": {"number": {{ s.number }}, "name": {{ s.name|tojson }}, "logo": {{ s.logo_path|tojson }}, "members": [{% for m in s.members %}{"role": {{ m.role_name|tojson }}, "name": {{ m.person_name|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]}{% if not loop.last %},{% endif %}{% endfor %}
+};
+</script>
+<script src="/static/urna.js?v={{ app_version }}"></script>
+{% endblock %}

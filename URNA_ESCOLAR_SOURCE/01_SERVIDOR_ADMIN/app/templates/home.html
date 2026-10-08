@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Urna Escolar{% endblock %}
+{% block body %}
+<time class="live-clock public-clock" data-with-date="1"></time>
+<main class="center-shell">
+  <section class="card hero">
+    <h1>Urna Escolar</h1>
+    <p>Sistema local de votação presencial — protótipo {{ version }}</p>
+    <div class="actions">
+      <a class="button primary" href="/login">Entrar</a>
+      <a class="button" href="/setup">Configuração inicial</a>
+    </div>
+  </section>
+</main>
+{% endblock %}

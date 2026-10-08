@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}Urna Escolar{% endblock %}</title>
+  <link rel="stylesheet" href="/static/app.css?v={{ app_version }}">
+</head>
+<body>
+  {% block body %}{% endblock %}
+  <script>
+  (()=>{
+    const tick=()=>{
+      const now=new Date();
+      const time=now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      const date=now.toLocaleDateString('pt-BR');
+      document.querySelectorAll('.live-clock').forEach(el=>{
+        el.textContent=el.dataset.withDate==='1'?`${date} · ${time}`:time;
+        el.setAttribute('datetime',now.toISOString());
+      });
+    };
+    tick(); setInterval(tick,1000);
+  })();
+  </script>
+</body>
+</html>

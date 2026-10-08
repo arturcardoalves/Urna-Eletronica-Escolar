@@ -1,0 +1,6 @@
+[project]
+name = "urna-escolar"
+version = "2.2.1"
+description = "Sistema local de votação presencial para eleições escolares"
+requires-python = ">=3.11"
+

@@ -1,0 +1,308 @@
+{% extends "base.html" %}
+{% block title %}Administração · Urna Escolar
+<script>
+(function(){
+  const enabled=document.getElementById('voterIdentificationEnabled');
+  const mode=document.getElementById('voterLookupMode');
+  if(!enabled||!mode)return;
+  function sync(){mode.disabled=!enabled.checked;}
+  enabled.addEventListener('change',sync); sync();
+})();
+</script>
+{% endblock %}
+{% block body %}
+<div class="admin-layout">
+  <aside class="admin-sidebar">
+    <div class="brand-block">
+      <div class="brand-mark">UE</div>
+      <div><strong>Urna Escolar</strong><small>Administração</small></div>
+    </div>
+    <nav class="admin-nav">
+      <a class="{% if section=='overview' %}active{% endif %}" href="/admin?section=overview">Visão geral</a>
+      {% if election.state == 'CONFIG' %}
+      <div class="nav-group-label">PREPARAÇÃO</div>
+      <a class="{% if section=='election' %}active{% endif %}" href="/admin?section=election">Configuração da eleição</a>
+      <a class="{% if section=='voters' %}active{% endif %}" href="/admin?section=voters">Eleitores{% if not election.voter_identification_enabled %} (opcional){% endif %}</a>
+      <a class="{% if section=='slates' %}active{% endif %}" href="/admin?section=slates">Chapas</a>
+      <a class="{% if section=='urns' %}active{% endif %}" href="/admin?section=urns">Urnas e dispositivos</a>
+      <a class="{% if section=='users' %}active{% endif %}" href="/admin?section=users">Usuários</a>
+      {% elif election.state == 'OPEN' %}
+      <div class="nav-group-label">EXCEÇÃO CONTROLADA</div>
+      <a class="{% if section=='voters' %}active{% endif %}" href="/admin?section=voters">Adicionar eleitor</a>
+      {% endif %}
+      <div class="nav-group-label">CONSULTA</div>
+      <a class="{% if section=='reports' %}active{% endif %}" href="/admin?section=reports">Relatórios</a>
+      <a class="{% if section=='logs' %}active{% endif %}" href="/admin?section=logs">Logs operacionais</a>
+      <a class="{% if section=='diagnostics' %}active{% endif %}" href="/admin?section=diagnostics">Diagnóstico</a>
+      <a class="{% if section=='security' %}active{% endif %}" href="/admin?section=security">Segurança e integridade</a>
+      <a class="{% if section=='history' %}active{% endif %}" href="/admin?section=history">Histórico de eleições</a>
+    </nav>
+    <div class="sidebar-footer"><time class="live-clock sidebar-clock" data-with-date="1"></time><small>Versão {{ app_version }}</small><strong>{{ user.display_name }}</strong><form method="post" action="/logout"><button class="sidebar-logout" type="submit">Sair</button></form></div>
+  </aside>
+
+  <main class="admin-main">
+    <header class="admin-topline">
+      <div>
+        <span class="eyebrow">ELEIÇÃO ATUAL</span>
+        <h1>{{ election.name }}</h1>
+        <p>{{ election.institution_name or 'Instituição não configurada' }}</p>
+      </div>
+      <div class="admin-top-actions"><time class="live-clock admin-clock" data-with-date="1"></time><div class="state-pill state-{{ election.state|lower }}">{{ election.state }}</div></div>
+    </header>
+    {% if election.state != 'CONFIG' %}<div class="admin-locked-banner"><div class="admin-locked-copy"><b>ADMINISTRAÇÃO LACRADA · MODO DE CONSULTA</b><span>{% if election.state == 'OPEN' %}Configurações permanecem bloqueadas. Durante a votação, somente a inclusão excepcional unitária de eleitor pode ser autorizada pelo Admin, com nova senha e ocorrência automática registrada para auditoria.{% else %}Depois da lacração, o Administrador não opera a votação. A abertura, a zerésima, as liberações e o encerramento pertencem ao Mesário.{% endif %}</span></div><div class="admin-locked-network"><small>ACESSO DA MESA ELEITORAL</small><code>{{ network_base_url }}/login</code><span>No computador da Mesa, abra esse endereço e entre com o usuário MESÁRIO.</span></div></div>{% endif %}
+
+    {% if section == 'overview' %}
+    <section class="metric-grid four">
+      <div class="metric-card"><span>Eleitores</span><strong>{% if election.voter_identification_enabled %}{{ voters|length }}{% else %}—{% endif %}</strong><small>{% if election.voter_identification_enabled %}identificação ativa{% else %}identificação desativada{% endif %}</small></div>
+      <div class="metric-card"><span>Compareceram</span><strong>{{ voted }}</strong></div>
+      <div class="metric-card"><span>Chapas</span><strong>{{ slates|length }}</strong></div>
+      <div class="metric-card"><span>Urnas</span><strong>{{ urns|length }}</strong></div>
+    </section>
+    <section class="panel network-access-panel"><div class="panel-head"><div><span class="eyebrow">REDE LOCAL</span><h2>Endereços dos computadores</h2><p class="section-description">Todos os equipamentos usam o mesmo servidor. Internet não é necessária durante a votação.</p></div></div>
+      <div class="network-address-grid">
+        <div><span>Login do Administrador</span><code>{{ network_base_url }}/login</code><small>Entre com um usuário ADMIN.</small></div>
+        <div><span>Login da Mesa Eleitoral</span><code>{{ network_base_url }}/login</code><small>Entre com um usuário MESÁRIO; o sistema abre a Mesa automaticamente.</small></div>
+        {% for u in urns %}<div><span>{{ u.name }}</span><code>{{ network_base_url }}/urna/{{ u.code }}</code><small>Autentique com a senha do dispositivo {{ u.code }}.</small></div>{% endfor %}
+      </div>
+      <div class="info-callout"><b>Servidor/Admin e Mesa podem ficar no mesmo computador.</b> Use o Administrador no navegador normal e abra a Mesa em uma sessão separada pelo botão da Central. Nesse caso ambos usam <code>https://127.0.0.1:8443</code>. A cabine da urna pode continuar em outro computador pela rede cabeada.</div>
+    </section>
+    <section class="panel readiness-panel"><div class="panel-head"><div><span class="eyebrow">PREPARAÇÃO</span><h2>Prontidão da eleição</h2><p class="section-description">O sistema verifica os itens essenciais antes da abertura.</p></div><a class="btn secondary" href="/admin?section=diagnostics">Abrir diagnóstico</a></div><div class="readiness-grid">{% for c in preflight %}<div class="readiness-item {{ 'ok' if c.ok else ('warn' if not c.blocking else 'bad') }}"><span class="readiness-icon">{{ '✓' if c.ok else ('!' if not c.blocking else '×') }}</span><div><b>{{ c.label }}</b><small>{{ c.detail }}</small></div></div>{% endfor %}</div></section>
+    <section class="panel-grid two">
+      <article class="panel">
+        <div class="panel-head"><div><span class="eyebrow">PROCESSO</span><h2>Controle da eleição</h2></div></div>
+        <div class="election-timeline">
+          <div class="timeline-step {% if election.state in ['SEALED','OPEN','CLOSED'] %}done{% endif %}"><b>1</b><span>Configuração</span></div>
+          <div class="timeline-step {% if election.state in ['SEALED','OPEN','CLOSED'] %}done{% endif %}"><b>2</b><span>Lacração</span></div>
+          <div class="timeline-step {% if election.state in ['OPEN','CLOSED'] %}done{% endif %}"><b>3</b><span>Votação</span></div>
+          <div class="timeline-step {% if election.state == 'CLOSED' %}done{% endif %}"><b>4</b><span>Encerramento</span></div>
+        </div>
+        <div class="action-row">
+          {% if election.state == 'CONFIG' %}<form method="post" action="/admin/seal"><button class="btn primary">Lacrar eleição</button></form>{% endif %}
+          {% if election.state in ['SEALED','OPEN'] %}<span class="help-text">Controle operacional transferido para o Mesário</span>{% endif %}
+          {% if election.zero_snapshot_json %}<a class="btn secondary" target="_blank" href="/reports/zero.pdf">Visualizar zerésima emitida</a>{% endif %}
+          {% if election.final_tally_json %}<a class="btn success" target="_blank" href="/reports/result.pdf">Boletim final</a>{% endif %}
+        </div>
+        {% if election.state == 'SEALED' %}<div class="info-callout">A zerésima e a abertura serão comandadas pela Mesa Eleitoral. Ao abrir, o sistema imprimirá automaticamente a zerésima na impressora da mesa e nas impressoras das urnas.</div>{% endif %}
+        {% if election.state == 'OPEN' %}<div class="info-callout">A votação está em andamento. Configurações críticas permanecem bloqueadas até o encerramento pela Mesa Eleitoral.</div>{% endif %}
+      </article>
+      <article class="panel">
+        <div class="panel-head"><div><span class="eyebrow">INTEGRIDADE</span><h2>Identificação da configuração</h2></div></div>
+        <dl class="detail-list"><div><dt>Identificação de eleitores</dt><dd>{{ ('Ativada · Apenas lista por turma' if election.voter_lookup_mode=='LIST_ONLY' else ('Ativada · Digitação + lista por turma' if election.voter_lookup_mode=='SEARCH_LIST' else 'Ativada · Somente digitação')) if election.voter_identification_enabled else 'Desativada · urna com liberação automática' }}</dd></div><div><dt>Hash da configuração</dt><dd><code>{{ election.config_hash or 'Ainda não lacrada' }}</code></dd></div><div><dt>Em votação agora</dt><dd>{{ in_progress }}</dd></div><div><dt>Modo da urna</dt><dd>{{ 'Seleção com mouse' if election.voting_mode=='SELECTION' else 'Teclado físico numérico' }}</dd></div><div><dt>Impressão do voto</dt><dd>{{ 'Ativada' if election.paper_enabled else 'Desativada' }}</dd></div><div><dt>Aviso de troca de papel</dt><dd>{% if election.paper_change_warning_enabled %}A cada {{ election.paper_change_warning_votes }} votos por urna{% else %}Desativado{% endif %}</dd></div></dl>
+      </article>
+    </section>
+    {% endif %}
+
+    {% if section == 'election' %}
+    <form method="post" action="/admin/election" class="stack-20">
+      <section class="panel"><div class="panel-head"><div><span class="eyebrow">GERAL</span><h2>Identificação da eleição</h2></div><span class="help-text">Alterável antes da lacração</span></div>
+        <div class="form-grid two"><label>Nome da eleição<input name="name" value="{{ election.name }}" required {% if election.state!='CONFIG' %}readonly{% endif %}></label><label>Instituição<input name="institution_name" value="{{ election.institution_name }}" {% if election.state!='CONFIG' %}readonly{% endif %}></label></div>
+      </section>
+      <section class="panel"><div class="panel-head"><div><span class="eyebrow">MESA ELEITORAL</span><h2>Identificação de eleitores</h2><p class="section-description">Define se a Mesa controla nominalmente quem pode votar ou se a urna funciona em fluxo contínuo sem cadastro de alunos.</p></div></div>
+        <div class="form-grid two">
+          <div class="toggle-stack"><label class="toggle"><input type="checkbox" name="voter_identification_enabled" id="voterIdentificationEnabled" {% if election.voter_identification_enabled %}checked{% endif %}><span></span>Eleição com identificação de eleitores</label><small class="field-hint">Desativado: a Mesa continua responsável pela abertura, zerésima, acompanhamento e encerramento, mas não libera pessoa por pessoa. Depois de cada voto a urna fica livre para o próximo eleitor.</small></div>
+          <label>Navegação de eleitores<select name="voter_lookup_mode" id="voterLookupMode" {% if not election.voter_identification_enabled %}disabled{% endif %}><option value="SEARCH" {% if election.voter_lookup_mode=='SEARCH' %}selected{% endif %}>Somente busca por digitação</option><option value="SEARCH_LIST" {% if election.voter_lookup_mode=='SEARCH_LIST' %}selected{% endif %}>Busca por digitação + lista por turma</option><option value="LIST_ONLY" {% if election.voter_lookup_mode=='LIST_ONLY' %}selected{% endif %}>Somente lista por turma, sem busca</option></select><small class="field-hint">No modo com lista, os nomes das abas do XLSX viram botões de turma. Em “Somente lista”, o campo de pesquisa não aparece na Mesa.</small></label>{% if not election.voter_identification_enabled %}<input type="hidden" name="voter_lookup_mode" value="{{ election.voter_lookup_mode }}">{% endif %}
+        </div>
+      </section>
+      <section class="panel"><div class="panel-head"><div><span class="eyebrow">CABINE</span><h2>Comportamento da votação</h2></div></div>
+        <div class="form-grid two"><label>Modo de votação<select name="voting_mode"><option value="SELECTION" {% if election.voting_mode=='SELECTION' %}selected{% endif %}>Seleção com mouse</option><option value="NUMERIC" {% if election.voting_mode=='NUMERIC' %}selected{% endif %}>Teclado físico numérico</option></select></label><div class="toggle-stack"><label class="toggle"><input type="checkbox" name="sound_enabled" {% if election.sound_enabled %}checked{% endif %}><span></span>Sinal sonoro curto ao finalizar</label><label class="toggle"><input type="checkbox" name="allow_blank" {% if election.allow_blank %}checked{% endif %} {% if election.state!='CONFIG' %}disabled{% endif %}><span></span>Permitir voto em branco</label><label class="toggle"><input type="checkbox" name="show_members_on_ballot" {% if election.show_members_on_ballot %}checked{% endif %} {% if election.state!='CONFIG' %}disabled{% endif %}><span></span>Exibir integrantes da chapa</label></div></div>
+        {% if election.state!='CONFIG' and election.allow_blank %}<input type="hidden" name="allow_blank" value="on">{% endif %}{% if election.state!='CONFIG' and election.show_members_on_ballot %}<input type="hidden" name="show_members_on_ballot" value="on">{% endif %}
+      </section>
+      <section class="panel"><div class="panel-head"><div><span class="eyebrow">TECLADO FÍSICO</span><h2>Teclas de função</h2><p class="section-description">Não digite o nome da tecla. Clique em capturar e pressione a tecla real no teclado que será usado na urna.</p></div><span class="help-text">Aceita letras, números, Enter, Esc, Backspace, F1–F12 e outras teclas do navegador.</span></div>
+        <div class="key-capture-grid">
+          <div class="key-capture-card"><span>CONFIRMA</span><input name="keyboard_confirm_key" id="keyConfirmInput" value="{{ election.keyboard_confirm_key }}" readonly><button type="button" class="btn secondary key-capture-btn" data-target="keyConfirmInput">Capturar tecla</button><small class="key-capture-status"></small></div>
+          <div class="key-capture-card"><span>CORRIGE</span><input name="keyboard_correct_key" id="keyCorrectInput" value="{{ election.keyboard_correct_key }}" readonly><button type="button" class="btn secondary key-capture-btn" data-target="keyCorrectInput">Capturar tecla</button><small class="key-capture-status"></small></div>
+          <div class="key-capture-card"><span>BRANCO</span><input name="keyboard_blank_key" id="keyBlankInput" value="{{ election.keyboard_blank_key }}" readonly><button type="button" class="btn secondary key-capture-btn" data-target="keyBlankInput">Capturar tecla</button><small class="key-capture-status"></small></div>
+        </div>
+        <div id="keyCaptureGlobal" class="inline-message"></div>
+      </section>
+      <section class="panel"><div class="panel-head"><div><span class="eyebrow">CÉDULA FÍSICA</span><h2>Impressão do voto</h2></div></div>
+        <div class="toggle-grid"><label class="toggle"><input type="checkbox" name="paper_enabled" {% if election.paper_enabled %}checked{% endif %}><span></span>Impressão habilitada</label><label class="toggle"><input type="checkbox" name="paper_show_institution" {% if election.paper_show_institution %}checked{% endif %}><span></span>Nome da instituição</label><label class="toggle"><input type="checkbox" name="paper_show_election_name" {% if election.paper_show_election_name %}checked{% endif %}><span></span>Nome da eleição</label><label class="toggle"><input type="checkbox" name="paper_show_slate_number" {% if election.paper_show_slate_number %}checked{% endif %}><span></span>Número da chapa</label><label class="toggle"><input type="checkbox" name="paper_show_slate_name" {% if election.paper_show_slate_name %}checked{% endif %}><span></span>Nome da chapa</label><label class="toggle"><input type="checkbox" name="paper_show_instruction" {% if election.paper_show_instruction %}checked{% endif %}><span></span>Instrução final</label></div>
+        <label>Texto da instrução<input name="paper_instruction_text" value="{{ election.paper_instruction_text }}" maxlength="180"></label>
+        <div class="paper-change-config">
+          <label class="toggle"><input type="checkbox" name="paper_change_warning_enabled" {% if election.paper_change_warning_enabled %}checked{% endif %}><span></span>Avisar o Mesário quando estiver na hora de trocar o rolo de papel</label>
+          <label>Alertar após quantos votos impressos por urna<input type="number" name="paper_change_warning_votes" min="20" max="5000" step="1" value="{{ election.paper_change_warning_votes or 200 }}"><small class="field-hint">Ex.: 200. O contador é individual por urna, porque cada impressora possui seu próprio rolo. Depois que o Mesário confirma a troca, o contador daquela urna reinicia.</small></label>
+        </div>
+      </section>
+      <section class="panel"><div class="panel-head"><div><span class="eyebrow">DOCUMENTOS</span><h2>Zerésima e boletim final</h2></div></div>
+        <div class="form-grid three"><label>Vias padrão da zerésima<input type="number" name="zero_copies" min="3" max="20" value="{{ election.zero_copies }}"></label><label>Vias do boletim final<input type="number" name="result_copies" min="1" max="20" value="{{ election.result_copies }}"></label><div class="toggle-stack"><label class="toggle"><input type="checkbox" name="zero_signature_fields" {% if election.zero_signature_fields %}checked{% endif %}><span></span>Campos de assinatura na zerésima</label></div></div>
+      </section>
+      <div class="sticky-actions"><button class="btn primary" type="submit">Salvar configurações</button></div>
+    </form>
+    <section class="panel sound-panel"><div class="panel-head"><div><span class="eyebrow">SOM</span><h2>Som de finalização</h2><p class="section-description">A urna usa o som padrão do sistema. Se você enviar outro MP3 aqui, a cópia personalizada será salva na área de dados do sistema, fora de Program Files.</p></div></div>
+      <div class="sound-config-row"><audio controls preload="none" src="{{ final_sound_url }}?v={{ app_version }}"></audio><form id="soundUploadForm" method="post" action="/admin/final-sound" enctype="multipart/form-data"><label>Novo MP3<input type="file" name="sound_file" accept="audio/mpeg,.mp3" required></label><button class="btn secondary">Substituir som</button></form></div>
+    </section>
+    {% endif %}
+
+    {% if section == 'voters' %}
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">ELEITORES</span><h2>{% if election.state=='CONFIG' %}Cadastro e importação{% else %}Cadastro de eleitores{% endif %}</h2></div><span class="counter">{{ voters|length }} cadastrados</span></div>
+      {% if election.state=='CONFIG' %}
+      <form method="post" action="/admin/voters/manual" class="form-grid five"><input name="enrollment" placeholder="Matrícula" required><input name="name" placeholder="Nome completo" required><input name="class_code" placeholder="Turma, ex. 302" required><input name="shift" placeholder="Turno" required><button class="btn primary">Adicionar</button></form>
+      <div class="import-box"><form method="post" action="/admin/voters/import" enctype="multipart/form-data" class="inline-form"><input type="file" name="file" accept=".csv,.xlsx" required><button class="btn secondary">Importar CSV/XLSX</button></form><small><b>XLSX:</b> cada aba representa uma turma e o nome da aba vira o nome do botão na Mesa. Em cada aba use Matricula, Nome e Turno. <b>CSV:</b> use Matricula, Nome, Turma e Turno.</small></div>
+      {% elif election.state=='OPEN' and election.voter_identification_enabled %}
+      <div class="voter-exception-card">
+        <div><span class="eyebrow">ELEIÇÃO EM ANDAMENTO</span><h3>Inclusão excepcional de um eleitor</h3><p>Use somente quando um aluno não constar da relação original. Cada autorização permite cadastrar <b>apenas 1 eleitor</b>. O sistema exige novamente a senha do Administrador, registra automaticamente a ocorrência de autorização e libera o formulário para exatamente um cadastro.</p></div>
+        <button type="button" class="btn warning" id="openVoterExceptionBtn">AUTORIZAR 1 NOVO ELEITOR</button>
+      </div>
+      <div class="info-callout"><b>Importação em massa continua bloqueada.</b> Depois de concluir um cadastro excepcional, a autorização é encerrada automaticamente. Para outro eleitor será necessário repetir a senha e gerar uma nova ocorrência de autorização.</div>
+      {% elif election.state=='OPEN' and not election.voter_identification_enabled %}
+      <div class="info-callout"><b>Identificação nominal desativada.</b> A lista de alunos não participa desta eleição e a urna funciona em fluxo contínuo.</div>
+      {% else %}
+      <div class="info-callout">A relação de eleitores está em modo de consulta. Inclusões excepcionais só podem ser feitas enquanto a votação estiver aberta.</div>
+      {% endif %}
+      <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Matrícula</th><th>Nome</th><th>Turma</th><th>Turno</th><th>Origem</th><th>Status</th></tr></thead><tbody>{% for v in voters %}<tr><td>{{ v.enrollment }}</td><td>{{ v.name }}</td><td>{{ v.class_code }}</td><td>{{ v.shift }}</td><td>{% if v.exceptional_addition %}<span class="mini-status exception-origin">EXCEPCIONAL</span>{% else %}<span class="muted-origin">Original</span>{% endif %}</td><td><span class="mini-status status-{{ v.status|lower }}">{{ v.status }}</span></td></tr>{% endfor %}</tbody></table></div>
+    </section>
+
+    {% if election.state=='OPEN' and election.voter_identification_enabled %}
+    <div class="admin-exception-modal hidden" id="voterExceptionModal" role="dialog" aria-modal="true" aria-labelledby="voterExceptionTitle">
+      <div class="admin-exception-card">
+        <div class="modal-head"><div><span class="eyebrow">EXCEÇÃO CONTROLADA</span><h2 id="voterExceptionTitle">Adicionar eleitor durante a votação</h2></div><button type="button" class="modal-close" id="closeVoterException">×</button></div>
+
+        <div id="voterExceptionAuthStep">
+          <div class="warning-box"><b>A eleição já está acontecendo.</b><span>Esta operação não reabre o cadastro geral. Ela registra uma ocorrência de autorização para exatamente um eleitor.</span></div>
+          <form id="voterExceptionAuthForm" class="stack-16"><label>Senha do Administrador<input type="password" name="password" autocomplete="current-password" required></label><div id="voterExceptionAuthStatus" class="inline-message"></div><div class="modal-actions"><button type="button" class="btn secondary" id="cancelVoterExceptionAuth">Cancelar</button><button class="btn warning" type="submit">CONFIRMAR E REGISTRAR OCORRÊNCIA</button></div></form>
+        </div>
+
+        <div id="voterExceptionAddStep" class="hidden">
+          <div class="exception-ready"><span>✓</span><div><b>Ocorrência registrada</b><small>Esta autorização aceita somente um cadastro.</small></div></div>
+          <form id="voterExceptionAddForm" class="stack-16"><div class="form-grid two"><label>Matrícula<input name="enrollment" maxlength="32" required></label><label>Nome completo<input name="name" maxlength="180" required></label><label>Turma<input name="class_code" maxlength="20" placeholder="Ex.: 302" required></label><label>Turno<input name="shift" maxlength="30" required></label></div><div id="voterExceptionAddStatus" class="inline-message"></div><div class="modal-actions"><button type="button" class="btn secondary" id="closeVoterExceptionAdd">Cancelar</button><button class="btn success" type="submit">CADASTRAR ESTE ELEITOR</button></div></form>
+        </div>
+
+        <div id="voterExceptionDoneStep" class="hidden"><div class="exception-done-mark">✓</div><h3>Eleitor cadastrado</h3><p>O cadastro foi sincronizado com a Mesa e as urnas. Esta autorização foi encerrada e não pode ser reutilizada.</p></div>
+      </div>
+    </div>
+    <script>
+    (()=>{
+      const modal=document.getElementById('voterExceptionModal'),openBtn=document.getElementById('openVoterExceptionBtn');if(!modal||!openBtn)return;
+      const authStep=document.getElementById('voterExceptionAuthStep'),addStep=document.getElementById('voterExceptionAddStep'),doneStep=document.getElementById('voterExceptionDoneStep');
+      const authForm=document.getElementById('voterExceptionAuthForm'),addForm=document.getElementById('voterExceptionAddForm');
+      const authStatus=document.getElementById('voterExceptionAuthStatus'),addStatus=document.getElementById('voterExceptionAddStatus');
+      let ticket='';
+      const show=(el,on)=>el&&el.classList.toggle('hidden',!on);
+      function close(){modal.classList.add('hidden');}
+      function reset(){ticket='';authForm.reset();addForm.reset();authStatus.textContent='';authStatus.className='inline-message';addStatus.textContent='';addStatus.className='inline-message';show(authStep,true);show(addStep,false);show(doneStep,false);}
+      openBtn.addEventListener('click',()=>{reset();modal.classList.remove('hidden');setTimeout(()=>authForm.querySelector('input[name=password]')?.focus(),80)});
+      ['closeVoterException','cancelVoterExceptionAuth','closeVoterExceptionAdd'].forEach(id=>document.getElementById(id)?.addEventListener('click',close));
+      modal.addEventListener('mousedown',e=>{if(e.target===modal)close()});
+      authForm.addEventListener('submit',async e=>{e.preventDefault();const btn=authForm.querySelector('button[type=submit]');btn.disabled=true;authStatus.textContent='Validando senha e registrando ocorrência…';authStatus.className='inline-message';try{const r=await fetch('/api/admin/voters/exception/prepare',{method:'POST',body:new FormData(authForm)});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Não foi possível autorizar.');ticket=d.ticket;authStatus.textContent=d.message||'Ocorrência registrada. Cadastro liberado.';authStatus.className='inline-message ok';setTimeout(()=>{show(authStep,false);show(addStep,true);setTimeout(()=>addForm.querySelector('input[name=enrollment]')?.focus(),80)},350);}catch(err){authStatus.textContent=err.message;authStatus.className='inline-message bad';}finally{btn.disabled=false;}});
+      addForm.addEventListener('submit',async e=>{e.preventDefault();if(!ticket)return;const btn=addForm.querySelector('button[type=submit]');btn.disabled=true;addStatus.textContent='Cadastrando e verificando integridade…';addStatus.className='inline-message';try{const fd=new FormData(addForm);fd.append('ticket',ticket);const r=await fetch('/api/admin/voters/exception/add',{method:'POST',body:fd});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Não foi possível cadastrar.');ticket='';show(addStep,false);show(doneStep,true);setTimeout(()=>location.href='/admin?section=voters',1300);}catch(err){addStatus.textContent=err.message;addStatus.className='inline-message bad';}finally{btn.disabled=false;}});
+    })();
+    </script>
+    {% endif %}
+    {% endif %}
+
+    {% if section == 'election' %}
+    <script>
+    (()=>{
+      const buttons=[...document.querySelectorAll('.key-capture-btn')]; let active=null;
+      function finish(btn,e){
+        const input=document.getElementById(btn.dataset.target); const code=e.code||e.key; const label=e.key===' '?'Espaço':e.key;
+        input.value=code; btn.textContent='Capturar novamente'; btn.classList.remove('capturing');
+        const status=btn.parentElement.querySelector('.key-capture-status'); status.textContent=`✓ Capturado: ${label} (${code})`; status.className='key-capture-status ok';
+        active=null; validate();
+      }
+      function validate(){
+        const vals=['keyConfirmInput','keyCorrectInput','keyBlankInput'].map(id=>document.getElementById(id)?.value.toLowerCase()).filter(Boolean);
+        const box=document.getElementById('keyCaptureGlobal');
+        if(new Set(vals).size!==vals.length){box.textContent='As três funções precisam usar teclas diferentes.';box.className='inline-message bad';}else{box.textContent='Teclas configuradas. Salve as configurações da eleição.';box.className='inline-message ok';}
+      }
+      buttons.forEach(btn=>btn.addEventListener('click',()=>{buttons.forEach(b=>{b.classList.remove('capturing');if(b!==btn&&b.textContent==='Pressione uma tecla…')b.textContent='Capturar tecla';});active=btn;btn.classList.add('capturing');btn.textContent='Pressione uma tecla…';const status=btn.parentElement.querySelector('.key-capture-status');status.textContent='Aguardando o próximo pressionamento do teclado.';status.className='key-capture-status';}));
+      document.addEventListener('keydown',e=>{if(!active)return;e.preventDefault();e.stopPropagation();finish(active,e);},true);
+    })();
+    </script>
+    {% endif %}
+
+    {% if section == 'slates' %}
+    <section class="panel slate-create-panel"><div class="panel-head"><div><span class="eyebrow">CHAPAS</span><h2>Cadastro de chapas</h2><p class="section-description">Cadastre a chapa e monte a composição adicionando um cargo e um nome por vez.</p></div></div>
+      {% if election.state=='CONFIG' %}
+      <form method="post" action="/admin/slates" enctype="multipart/form-data" class="stack-20" id="slateCreateForm">
+        <div class="form-grid three"><label>Número da chapa<span class="field-hint">De 1 a 99</span><input type="number" min="1" max="99" name="number" placeholder="Ex.: 12" required></label><label>Nome da chapa<span class="field-hint">Nome que aparecerá na urna</span><input name="name" placeholder="Ex.: União Estudantil" required></label><label>Logo ou foto<span class="field-hint">Opcional · PNG, JPG ou WEBP</span><input type="file" name="logo" accept=".png,.jpg,.jpeg,.webp"></label></div>
+        <div class="member-builder"><div class="member-builder-head"><div><h3>Integrantes da chapa</h3><p>O cargo é livre: Presidente, Vice-presidente, Líder, Tesoureiro, Comunicação etc.</p></div><span id="memberCount" class="counter">0 integrantes</span></div>
+          <div class="member-entry-row"><label>Cargo / prefixo<input id="memberRole" type="text" placeholder="Ex.: Presidente" maxlength="100"></label><label>Nome do integrante<input id="memberName" type="text" placeholder="Nome completo" maxlength="160"></label><button type="button" class="btn secondary member-add-btn" id="addMemberBtn">+ Adicionar integrante</button></div>
+          <div id="memberList" class="member-list"><div class="member-empty" id="memberEmpty">Nenhum integrante adicionado. Você pode cadastrar a chapa sem integrantes e adicioná-los depois.</div></div>
+          <input type="hidden" name="members_json" id="membersJson" value="[]">
+        </div>
+        <div class="form-footer"><button class="btn primary large">Cadastrar chapa</button></div>
+      </form>{% endif %}
+    </section>
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">CHAPAS CADASTRADAS</span><h2>Composição</h2></div><span class="counter">{{ slates|length }} chapas</span></div>
+      <div class="slate-admin-grid">{% for s in slates %}<article class="slate-admin-card"><div class="slate-card-top">{% if s.logo_path %}<img src="{{ s.logo_path }}" alt="Logo da chapa {{ s.number }}">{% else %}<div class="slate-logo-placeholder">{{ '%02d'|format(s.number) }}</div>{% endif %}<div><span class="slate-card-label">CHAPA</span><div class="slate-badge">{{ '%02d'|format(s.number) }}</div><h3>{{ s.name }}</h3></div></div>
+        <div class="member-card-list">{% for m in s.members|sort(attribute='display_order') %}<div class="member-card-row"><div><b>{{ m.role_name }}</b><span>{{ m.person_name }}</span></div>{% if election.state=='CONFIG' %}<form method="post" action="/admin/slates/{{ s.id }}/members/{{ m.id }}/delete"><button class="icon-danger" title="Remover integrante" aria-label="Remover {{ m.person_name }}">×</button></form>{% endif %}</div>{% else %}<div class="member-empty compact">Nenhum integrante cadastrado.</div>{% endfor %}</div>
+        {% if election.state=='CONFIG' %}<details class="member-add-existing"><summary>+ Adicionar integrante</summary><form method="post" action="/admin/slates/{{ s.id }}/members" class="member-inline-form"><label>Cargo / prefixo<input name="role_name" placeholder="Ex.: Vice-presidente" required maxlength="100"></label><label>Nome<input name="person_name" placeholder="Nome completo" required maxlength="160"></label><button class="btn secondary">Adicionar</button></form></details>{% endif %}
+      </article>{% else %}<div class="empty-state">Nenhuma chapa cadastrada.</div>{% endfor %}</div>
+    </section>
+    <script>
+    (()=>{const role=document.getElementById('memberRole'),name=document.getElementById('memberName'),btn=document.getElementById('addMemberBtn'),list=document.getElementById('memberList'),hidden=document.getElementById('membersJson'),count=document.getElementById('memberCount'),empty=document.getElementById('memberEmpty');if(!btn)return;let members=[];const esc=v=>String(v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));function render(){hidden.value=JSON.stringify(members);count.textContent=`${members.length} ${members.length===1?'integrante':'integrantes'}`;list.querySelectorAll('.member-draft').forEach(x=>x.remove());empty.style.display=members.length?'none':'block';members.forEach((m,i)=>{const row=document.createElement('div');row.className='member-draft';row.innerHTML=`<span class="member-order">${i+1}</span><div><b>${esc(m.role)}</b><span>${esc(m.name)}</span></div><button type="button" class="icon-danger" aria-label="Remover integrante">×</button>`;row.querySelector('button').onclick=()=>{members.splice(i,1);render()};list.appendChild(row)})}function add(){const r=role.value.trim(),n=name.value.trim();if(!r||!n){(!r?role:name).focus();return}members.push({role:r,name:n});role.value='';name.value='';render();role.focus()}btn.onclick=add;[role,name].forEach(el=>el.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();add()}}));render()})();
+    </script>
+    {% endif %}
+
+    {% if section == 'urns' %}
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">DISPOSITIVOS</span><h2>Urnas configuradas</h2></div><span class="counter">máximo {{ max_urns }}</span></div>
+      {% if election.state=='CONFIG' %}<form method="post" action="/admin/urns" class="form-grid four"><label>Código da urna<span class="field-hint">Identificador técnico, sem espaços</span><input name="code" placeholder="Ex.: URNA01" required></label><label>Nome de exibição<span class="field-hint">Como ela aparecerá para o mesário</span><input name="name" placeholder="Ex.: Urna 01" required></label><label>Senha do dispositivo<span class="field-hint">Usada apenas para autenticar esta cabine</span><input type="password" name="device_secret" placeholder="Crie uma senha exclusiva" required></label><div class="form-button"><button class="btn primary">Adicionar</button></div></form>{% endif %}
+      <div class="device-grid">{% for u in urns %}<article class="device-card"><div class="device-dot status-dot-{{ u.status|lower }}"></div><div><strong>{{ u.name }}</strong><small>{{ u.code }}</small><small class="device-printer">{{ u.printer_name or 'Impressora não selecionada' }}</small><span class="urn-mode-tag">{{ 'TECLADO' if u.voting_mode_override=='NUMERIC' else ('MOUSE / TOQUE' if u.voting_mode_override=='SELECTION' else 'PADRÃO DA ELEIÇÃO') }}</span>{% if election.state=='CONFIG' %}<form method="post" action="/admin/urns/{{ u.id }}/mode" class="urn-mode-form"><select name="voting_mode_override" onchange="this.form.submit()"><option value="INHERIT" {% if u.voting_mode_override=='INHERIT' %}selected{% endif %}>Usar padrão da eleição</option><option value="NUMERIC" {% if u.voting_mode_override=='NUMERIC' %}selected{% endif %}>Teclado físico</option><option value="SELECTION" {% if u.voting_mode_override=='SELECTION' %}selected{% endif %}>Mouse / toque</option></select></form>{% endif %}</div><span>{{ u.status }}</span></article>{% else %}<div class="empty-state">Nenhuma urna configurada.</div>{% endfor %}</div>
+      <div class="info-callout">As urnas são definidas antes da lacração. Durante a votação, não é possível adicionar novas cabines.</div>
+    </section>
+    {% endif %}
+
+
+    {% if section == 'users' %}
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">ACESSO</span><h2>Administradores e mesários</h2></div></div>
+      {% if election.state=='CONFIG' %}<form method="post" action="/admin/users" class="form-grid five"><input name="username" placeholder="Usuário" required><input name="display_name" placeholder="Nome completo" required><input type="password" name="password" placeholder="Senha (mín. 10)" minlength="10" required><select name="role"><option value="MESARIO">Mesário</option><option value="ADMIN">Administrador</option></select><button class="btn primary">Criar</button></form>{% endif %}
+      <div class="data-table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>Usuário</th><th>Perfil</th><th>Situação</th></tr></thead><tbody>{% for u in users %}<tr><td>{{ u.display_name }}</td><td>{{ u.username }}</td><td>{{ u.role }}</td><td>{{ 'Ativo' if u.active else 'Inativo' }}</td></tr>{% endfor %}</tbody></table></div>
+    </section>
+    {% endif %}
+
+    {% if section == 'reports' %}
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">DOCUMENTOS</span><h2>Relatórios e impressões</h2></div></div>
+      <div class="report-grid">{% if election.zero_snapshot_json %}<a class="report-card" target="_blank" href="/reports/zero.pdf"><b>Zerésima</b><span>Documento emitido pela Mesa durante a abertura.</span></a>{% endif %}<a class="report-card" target="_blank" href="/reports/voters.pdf?signature=true&sort=class"><b>Lista para assinatura</b><span>Organizada por turma e nome.</span></a><a class="report-card" target="_blank" href="/reports/voters.pdf?signature=true&sort=class&class_pages=true"><b>Lista por turma · página separada</b><span>Cada turma começa em uma nova página; turmas grandes continuam nas páginas seguintes.</span></a><a class="report-card" target="_blank" href="/reports/voters.pdf?status=VOTED&signature=false&sort=name"><b>Quem votou</b><span>Relação alfabética de comparecimento.</span></a><a class="report-card" target="_blank" href="/reports/voters.pdf?status=NOT_VOTED&signature=false&sort=name"><b>Quem não votou</b><span>Relação alfabética de ausentes.</span></a><a class="report-card" target="_blank" href="/reports/occurrences.pdf"><b>Ocorrências</b><span>Registros automáticos de eventos excepcionais.</span></a>{% if election.final_tally_json %}<a class="report-card strong" target="_blank" href="/reports/result.pdf"><b>Boletim final</b><span>Resultado digital da eleição com hashes de integridade.</span></a><a class="report-card" href="/reports/rdv.json"><b>RDV criptografado</b><span>Registros em posições aleatórias, sem identidade do eleitor e sem ordem de comparecimento.</span></a>{% endif %}</div>
+      <div class="subpanel"><h3>Lista personalizada</h3><form method="get" action="/reports/voters.pdf" target="_blank" class="form-grid five"><label>Status<select name="status"><option value="">Todos</option><option value="VOTED">Votaram</option><option value="NOT_VOTED">Não votaram</option></select></label><label>Ordenação<select name="sort"><option value="class">Turma</option><option value="name">Alfabética</option><option value="shift">Turno</option></select></label><label>Assinatura<select name="signature"><option value="true">Com campo</option><option value="false">Sem campo</option></select></label><label>Paginação<select name="class_pages"><option value="false">Fluxo contínuo</option><option value="true">Uma turma por página</option></select></label><div class="form-button"><button class="btn secondary">Gerar PDF</button></div></form></div>
+    </section>
+    {% endif %}
+
+    {% if section == 'logs' %}
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">AUDITORIA</span><h2>Logs operacionais</h2><p class="section-description">Eventos de sistema, urnas, impressão e segurança. O log não registra a escolha do eleitor.</p></div><a class="btn secondary" target="_blank" href="/reports/logs.pdf">Gerar PDF</a></div>
+      <div class="info-callout">O Administrador consulta e exporta os logs. Depois da lacração, qualquer ação operacional de impressão pertence à Mesa Eleitoral.</div><div class="log-list"><div class="log-row header"><span>Data/hora</span><span>Evento</span><span>Responsável</span><span>Detalhes</span></div>{% for e in audit_events %}<div class="log-row"><span>{{ e.created_at.strftime('%d/%m/%Y %H:%M:%S') }}</span><b>{{ e.event_type }}</b><span>{{ e.actor }}</span><code>{{ e.details_json }}</code></div>{% else %}<div class="empty-state">Nenhum evento registrado.</div>{% endfor %}</div>
+    </section>
+    {% endif %}
+
+
+    {% if section == 'diagnostics' %}
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">DIAGNÓSTICO</span><h2>Estado do sistema</h2><p class="section-description">Verificação rápida do servidor, configuração, urnas e impressão.</p></div><button class="btn secondary" id="refreshDiag">Atualizar</button></div>
+      <div class="diagnostic-summary" id="diagChecks">{% for c in preflight %}<div class="diag-row {{ 'ok' if c.ok else ('warn' if not c.blocking else 'bad') }}"><span>{{ '✓' if c.ok else ('!' if not c.blocking else '×') }}</span><div><b>{{ c.label }}</b><small>{{ c.detail }}</small></div></div>{% endfor %}</div>
+      <h3 class="section-subtitle">Urnas e periféricos</h3><div class="diagnostic-devices" id="diagUrns">{% for u in urns %}<article><div><b>{{ u.name }}</b><small>{{ u.code }}</small></div><span class="mini-status {{ 'ok' if u.last_seen_at else 'bad' }}">{{ 'Conectada' if u.last_seen_at else 'Sem contato' }}</span><span class="mini-status {{ 'ok' if u.agent_online else 'warn' }}">Agente {{ 'online' if u.agent_online else 'não verificado' }}</span><span class="mini-status {{ 'ok' if u.printer_ready else 'warn' }}">Impressora {{ 'pronta' if u.printer_ready else 'não verificada' }}</span></article>{% else %}<div class="empty-state">Nenhuma urna cadastrada.</div>{% endfor %}</div>
+      <div class="info-callout">O diagnóstico não registra votos. Use-o antes da abertura para testar conectividade e impressão.</div>
+    </section>
+    <script>document.getElementById('refreshDiag')?.addEventListener('click',()=>location.reload());</script>
+    {% endif %}
+
+    {% if section == 'security' %}
+    <section class="panel security-panel">
+      <div class="panel-head"><div><span class="eyebrow">INTEGRIDADE</span><h2>Segurança da eleição</h2><p class="section-description">Compara a configuração, os arquivos do sistema, a chave pública e a cadeia de auditoria com os valores lacrados.</p></div><a class="btn secondary" href="/admin/security-receipt.json">Baixar comprovante JSON</a></div>
+      <div class="readiness-grid">
+        <div class="readiness-item {{ 'ok' if security.config_ok else 'bad' }}"><span class="readiness-icon">{{ '✓' if security.config_ok else '×' }}</span><div><b>Configuração</b><small>{{ 'Corresponde ao hash lacrado' if security.config_ok else 'Configuração diferente da lacração' }}</small></div></div>
+        <div class="readiness-item {{ 'ok' if security.software_ok else 'bad' }}"><span class="readiness-icon">{{ '✓' if security.software_ok else '×' }}</span><div><b>Software</b><small>{{ 'Corresponde ao hash lacrado' if security.software_ok else 'Arquivos diferentes da lacração' }}</small></div></div>
+        <div class="readiness-item {{ 'ok' if security.public_key_ok else 'bad' }}"><span class="readiness-icon">{{ '✓' if security.public_key_ok else '×' }}</span><div><b>Chave pública</b><small>{{ 'Fingerprint correspondente' if security.public_key_ok else 'Chave diferente da lacrada' }}</small></div></div>
+        <div class="readiness-item {{ 'ok' if security.audit_ok else 'bad' }}"><span class="readiness-icon">{{ '✓' if security.audit_ok else '×' }}</span><div><b>Auditoria</b><small>{{ 'Cadeia de hashes íntegra' if security.audit_ok else 'Cadeia inconsistente' }}</small></div></div>
+      </div>
+      <div class="security-hashes">
+        <div><span>ID da eleição</span><code>{{ election.election_uuid }}</code></div>
+        <div><span>Hash da configuração</span><code>{{ election.config_hash or 'Será gerado na lacração' }}</code></div>
+        <div><span>Hash do software lacrado</span><code>{{ security.software_sealed or 'Será gerado na lacração' }}</code></div>
+        <div><span>Hash do software atual</span><code>{{ security.software_current }}</code></div>
+        <div><span>Fingerprint da chave pública</span><code>{{ security.public_key_sealed or security.public_key_current or 'Chave ainda não gerada' }}</code></div>
+        <div><span>Âncora atual da auditoria</span><code>{{ security.audit_head }}</code></div>
+        <div><span>Hash de integridade dos votos</span><code>{{ security.ballot_head }}</code></div>
+        <div><span>Hash da zerésima</span><code>{{ election.zero_snapshot_hash or 'Ainda não emitida' }}</code></div>
+      </div>
+      <div class="info-callout"><b>Como usar:</b> depois da lacração, baixe este comprovante e guarde uma cópia fora do computador do servidor. Antes da abertura e após o encerramento, compare os hashes e confira o estado de integridade no painel.</div>
+    </section>
+    {% endif %}
+
+    {% if section == 'history' %}
+    <section class="panel"><div class="panel-head"><div><span class="eyebrow">HISTÓRICO</span><h2>Eleições arquivadas</h2><p class="section-description">Ao iniciar uma nova eleição, uma cópia integral do banco anterior é preservada em data/archives.</p></div></div>
+      <div class="archive-list">{% for a in archives %}<article><div><b>{{ a.name }}</b><span>{{ a.institution_name }}</span><small>Encerrada: {{ a.closed_at.strftime('%d/%m/%Y %H:%M') if a.closed_at else '—' }} · Arquivada: {{ a.archived_at.strftime('%d/%m/%Y %H:%M') }}</small></div><code>{{ a.database_file }}</code></article>{% else %}<div class="empty-state">Ainda não há eleições arquivadas.</div>{% endfor %}</div>
+      {% if election.state == 'CLOSED' %}<div class="danger-zone"><div><b>Iniciar nova eleição</b><p>Arquiva a eleição atual, preserva usuários e configurações da estação e cria uma eleição vazia. Um novo par de chaves deverá ser gerado.</p></div><form method="post" action="/admin/new-election"><label>Digite <b>NOVA ELEICAO</b> para confirmar<input name="confirm_text" autocomplete="off" required></label><button class="btn danger">Arquivar e criar nova eleição</button></form></div>{% endif %}
+    </section>
+    {% endif %}
+  </main>
+</div>
+{% endblock %}

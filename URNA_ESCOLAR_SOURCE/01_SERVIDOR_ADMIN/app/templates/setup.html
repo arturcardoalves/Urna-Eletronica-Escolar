@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Configuração inicial{% endblock %}
+{% block body %}
+<time class="live-clock public-clock" data-with-date="1"></time>
+<main class="center-shell"><section class="card narrow">
+<h1>Configuração inicial</h1>
+{% if exists %}
+<p>O sistema já possui um usuário. Vá para o login.</p><a class="button primary" href="/login">Login</a>
+{% else %}
+<form method="post">
+<label>Usuário administrador<input name="username" required autocomplete="off"></label>
+<label>Nome do administrador<input name="display_name" required></label>
+<label>Senha<input type="password" name="password" minlength="10" required></label>
+<button class="button primary" type="submit">Criar administrador</button>
+</form>
+{% endif %}
+</section></main>
+{% endblock %}

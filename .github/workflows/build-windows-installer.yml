@@ -1,0 +1,65 @@
+name: Build Windows Installer
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tests/**'
+      - 'docs/**'
+      - 'installer/**'
+      - 'URNA_ESCOLAR_SOURCE/**'
+      - '.github/workflows/build-windows-installer.yml'
+
+jobs:
+  build:
+    timeout-minutes: 35
+    runs-on: windows-latest
+
+    steps:
+      - name: Baixar o repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          architecture: 'x64'
+
+      - name: Instalar Inno Setup 6
+        shell: powershell
+        run: choco install innosetup -y --no-progress
+
+      - name: Gerar, testar e montar instalador 2.3.0
+        shell: powershell
+        run: .\installer\BUILD_WINDOWS.ps1 -TestarInstalacao
+
+      - name: Verificar instalador final
+        shell: powershell
+        run: |
+          $file = '.\installer\output\Instalar_Urna_Escolar_2.3.0.exe'
+          if (!(Test-Path $file)) {
+            Write-Error "Instalador final não encontrado: $file"
+            exit 1
+          }
+          Get-FileHash $file -Algorithm SHA256
+          Get-Item $file | Format-List Name,Length,LastWriteTime
+
+      - name: Publicar instalador como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: Instalador-Urna-Escolar-2.3.0
+          path: installer/output/Instalar_Urna_Escolar_2.3.0.exe
+          if-no-files-found: error
+
+      - name: Guardar logs em caso de falha
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Logs-instalacao-2.3.0
+          path: |
+            installer/build-log.txt
+            test-results/**
+            C:/ProgramData/UrnaEscolar/logs/**
