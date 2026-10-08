@@ -46,7 +46,14 @@ function Wait-Server([string]$Exe) {
                 $json = & curl.exe --max-time 2 -k -f -s 'https://127.0.0.1:8443/health'
                 if ($LASTEXITCODE -eq 0 -and $json) {
                     $h = $json | ConvertFrom-Json
-                    if ($h.ok -and -not $proc.HasExited) { return $true }
+                    if ($h.ok -and -not $proc.HasExited) {
+                        # curl -k only proves that the server is reachable.
+                        # Also validate its CA/hostname using the actual client.
+                        $TlsCheck = "import os,sys; from pathlib import Path; sys.path.insert(0,'installer'); from native_runtime import Api; p=Path(os.environ['URNA_BUILD_DATA_DIR']); assert Api('https://127.0.0.1:8443',ca=(p/'Servidor/tls/urna_escolar_ca.crt').read_text('ascii')).request('/health')['ok']"
+                        & $Py -c $TlsCheck
+                        if ($LASTEXITCODE -ne 0) { return $false }
+                        return $true
+                    }
                 }
             } catch {}
             if ($proc.HasExited) { break }

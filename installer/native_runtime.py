@@ -39,6 +39,16 @@ class Api:
             self.context = ssl._create_unverified_context()
         else:
             self.context = ssl.create_default_context(cadata=ca) if ca else ssl.create_default_context()
+            if ca:
+                certificate = x509.load_pem_x509_certificate(ca.encode())
+                try:
+                    certificate.extensions.get_extension_for_class(x509.SubjectKeyIdentifier)
+                except x509.ExtensionNotFound:
+                    # Older project CAs/leaf certificates lack SKI/AKI. Keep
+                    # certificate-chain, signature, expiry and hostname checks,
+                    # using the pre-3.13 compatibility rules only for that CA.
+                    # Do not replace a paired Central's identity or private key.
+                    self.context.verify_flags &= ~ssl.VERIFY_X509_STRICT
         self.bootstrap = bootstrap
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), urllib.request.HTTPSHandler(context=self.context))
 

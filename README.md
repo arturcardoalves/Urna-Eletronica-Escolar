@@ -2,6 +2,8 @@
 
 Código para dois computadores Windows: Central + Mesa Eleitoral e Urna + impressora USB. Esta revisão limpa corrige o bloqueio SQLite no teste do aplicativo e mantém a versão 2.3.0.
 
+Também corrige a Central que não reconhecia o servidor ativo por incompatibilidade do certificado com Python 3.13. [Detalhes da correção HTTPS](docs/CORRECAO_HTTPS.md). Total após essa correção: 23 testes aprovados.
+
 ## Gerar o EXE
 
 Envie o conteúdo desta pasta para a raiz do repositório, incluindo `.github`. Abra Actions → Build Windows Installer → Run workflow. O GitHub compila com PowerShell em um Windows temporário, roda os testes e publica o instalador como artefato da execução.

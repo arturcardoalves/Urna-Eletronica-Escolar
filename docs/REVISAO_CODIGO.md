@@ -37,3 +37,7 @@ Executada a suíte nesta cópia com Python 3.13 e as dependências existentes da
 O parser do PowerShell não encontrou erros de sintaxe no script de compilação. Os testes produziram 537 avisos de depreciação de bibliotecas/APIs existentes; não foram falhas. Esta revisão não migrou toda a aplicação para novos padrões de datas e lifecycle.
 
 Não foi gerado nem instalado um novo EXE nesta revisão. A compilação e os testes do executável empacotado serão executados pelo workflow ao enviar o código ao GitHub. Testes reais nos dois PCs e na impressora ainda são necessários.
+
+## Correção posterior de HTTPS
+
+Após reproduzir a falha da Central instalada, corrigida a geração SKI/AKI dos certificados e acrescentada compatibilidade restrita às autoridades antigas do projeto. A consulta pelo cliente corrigido ao servidor instalado passou, mantendo validação de cadeia e hostname. Suíte completa após a alteração: **23 testes aprovados em 15,94 segundos**, com os mesmos 537 avisos de depreciação. Consulte CORRECAO_HTTPS.md. A instalação atual não foi modificada.

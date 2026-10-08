@@ -48,6 +48,10 @@ def ensure_tls():
         ips={str(value) for value in san.get_values_for_type(x509.IPAddress)}
         dns=set(san.get_values_for_type(x509.DNSName))
         needs=not required.issubset(ips) or socket.gethostname() not in dns or cert.not_valid_after_utc<now+timedelta(days=7)
+        try:
+            cert.extensions.get_extension_for_class(x509.AuthorityKeyIdentifier)
+        except x509.ExtensionNotFound:
+            needs=True
     if needs:
         make_server(ca_key,ca_cert)
         log("Certificado HTTPS preparado para os endereços locais.")
