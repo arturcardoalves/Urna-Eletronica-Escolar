@@ -48,6 +48,17 @@ Use esta opção para voltar ao estado de primeira instalação. Ela apaga:
 
 O papel escolhido na instalação — Central ou Urna — é preservado. Não é necessário reinstalar o programa.
 
+### Arquivos prontos para executar
+
+Na raiz do projeto existem dois arquivos que fazem a limpeza completa automaticamente:
+
+- `RESETAR_PC_CENTRAL_MESA.bat`: execute somente no computador Central + Mesa;
+- `RESETAR_PC_URNA.bat`: execute somente no computador da Urna.
+
+Copie o arquivo correto para cada computador, feche a Central, a Urna e todas as janelas do Microsoft Edge e clique no arquivo com o botão direito, escolhendo **Executar como administrador**. O arquivo confere o papel instalado no computador e pede que você digite uma frase de confirmação antes de apagar qualquer dado.
+
+Os comandos PowerShell das seções seguintes são uma alternativa manual aos arquivos BAT. Não é necessário usar os dois métodos.
+
 > [!CAUTION]
 > O reset completo é irreversível. Se houver qualquer informação que deva ser guardada, copie antes a pasta `C:\ProgramData\UrnaEscolar\Servidor` para um local protegido. Essa cópia contém dados sensíveis, chaves e hashes de senha e não deve ser enviada ao GitHub ou compartilhada.
 
