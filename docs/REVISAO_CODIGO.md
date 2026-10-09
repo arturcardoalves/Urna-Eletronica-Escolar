@@ -10,7 +10,7 @@ Base: pacote local Urna_Escolar_2.3.0. A revisão foi feita numa cópia; a pasta
 - Os BATs de reset confirmam o papel instalado, exigem a mesma conta Windows, recusam processos abertos e recusam árvores com links/junções antes de apagar qualquer destino.
 - Uploads de chapa agora validam formato, tamanho, dimensões e normalizam a imagem para PNG; planilhas têm limites de expansão, linhas e colunas; entradas de chapa, urna, usuário e eleição são limitadas no servidor.
 - A instalação inicial fica restrita ao próprio computador da Central. A origem `null` e origens com esquema ou host diferente são recusadas nas operações de alteração.
-- No primeiro cadastro, `localhost` e `127.0.0.1` são tratados como aliases do mesmo loopback; origens da rede continuam bloqueadas.
+- Corrigido o conflito entre formulários HTML e `Referrer-Policy: no-referrer`, que pode produzir `Origin: null`. A política agora é `same-origin`; origens nulas ou diferentes continuam bloqueadas. Retirada a exceção de aliases do cadastro, que não corrigia esse problema.
 - O agente HTTP legado de impressão, mantido para compatibilidade de operação sem impressão nativa, aceita apenas clientes de loopback. O aplicativo empacotado continua usando o módulo nativo.
 - O raster ESC/POS é enviado em tiras de no máximo 512 linhas, e layouts longos reservam altura conforme a quantidade de chapas e recusam corte silencioso.
 - As dependências de servidor foram atualizadas para `cryptography 50.0.2`, `python-multipart 0.0.32`, `starlette 1.7.0` e `fastapi 0.143.0`, cobrindo os avisos oficiais consultados. O cliente de testes passou a usar `httpx2`.
