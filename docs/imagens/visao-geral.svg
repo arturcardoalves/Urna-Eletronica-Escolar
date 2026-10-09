@@ -1,0 +1,61 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="560" viewBox="0 0 1400 560" role="img" aria-labelledby="title desc">
+  <title id="title">Visão geral da Urna Eletrônica Escolar</title>
+  <desc id="desc">Central e Mesa conectadas por rede local segura à Urna e impressora USB.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0e3158"/>
+      <stop offset="1" stop-color="#155eef"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#08213d" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+  <rect width="1400" height="560" rx="30" fill="url(#bg)"/>
+  <circle cx="1270" cy="70" r="210" fill="#fff" opacity="0.045"/>
+  <circle cx="85" cy="520" r="250" fill="#47d7ac" opacity="0.07"/>
+
+  <text x="700" y="65" text-anchor="middle" fill="#ffffff" font-family="Segoe UI, Arial, sans-serif" font-size="35" font-weight="700">Uma eleição escolar, dois computadores</text>
+  <text x="700" y="103" text-anchor="middle" fill="#dbeafe" font-family="Segoe UI, Arial, sans-serif" font-size="20">Operação local, vínculo verificado e ficha de voto impressa</text>
+
+  <g filter="url(#shadow)">
+    <rect x="80" y="150" width="350" height="315" rx="24" fill="#ffffff"/>
+    <rect x="525" y="180" width="350" height="255" rx="24" fill="#eff6ff"/>
+    <rect x="970" y="150" width="350" height="315" rx="24" fill="#ffffff"/>
+  </g>
+
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <circle cx="255" cy="213" r="35" fill="#143355"/>
+    <rect x="239" y="195" width="32" height="23" rx="3" fill="none" stroke="#fff" stroke-width="4"/>
+    <line x1="246" y1="226" x2="264" y2="226" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+    <text x="255" y="277" text-anchor="middle" fill="#143355" font-size="27" font-weight="700">Central + Mesa</text>
+    <text x="255" y="315" text-anchor="middle" fill="#52657a" font-size="18">Configura e administra</text>
+    <text x="255" y="344" text-anchor="middle" fill="#52657a" font-size="18">Autoriza cada eleitor</text>
+    <text x="255" y="373" text-anchor="middle" fill="#52657a" font-size="18">Acompanha as urnas</text>
+    <rect x="145" y="405" width="220" height="38" rx="19" fill="#eaf2ff"/>
+    <text x="255" y="431" text-anchor="middle" fill="#155eef" font-size="16" font-weight="700">COMPUTADOR 1</text>
+
+    <circle cx="700" cy="237" r="35" fill="#155eef"/>
+    <path d="M681 238a19 19 0 0 1 38 0v15h-38z" fill="none" stroke="#fff" stroke-width="4"/>
+    <rect x="676" y="237" width="48" height="34" rx="6" fill="#fff"/>
+    <circle cx="700" cy="253" r="4" fill="#155eef"/>
+    <text x="700" y="319" text-anchor="middle" fill="#143355" font-size="27" font-weight="700">Rede local segura</text>
+    <text x="700" y="356" text-anchor="middle" fill="#52657a" font-size="18">HTTPS + código de vínculo</text>
+    <text x="700" y="385" text-anchor="middle" fill="#52657a" font-size="18">Funciona sem internet</text>
+
+    <circle cx="1145" cy="213" r="35" fill="#176b46"/>
+    <rect x="1129" y="190" width="32" height="42" rx="5" fill="none" stroke="#fff" stroke-width="4"/>
+    <circle cx="1145" cy="221" r="4" fill="#fff"/>
+    <text x="1145" y="277" text-anchor="middle" fill="#143355" font-size="27" font-weight="700">Urna + Impressora</text>
+    <text x="1145" y="315" text-anchor="middle" fill="#52657a" font-size="18">Recebe a autorização</text>
+    <text x="1145" y="344" text-anchor="middle" fill="#52657a" font-size="18">Registra o voto sigiloso</text>
+    <text x="1145" y="373" text-anchor="middle" fill="#52657a" font-size="18">Imprime a ficha física</text>
+    <rect x="1035" y="405" width="220" height="38" rx="19" fill="#e8f7f0"/>
+    <text x="1145" y="431" text-anchor="middle" fill="#176b46" font-size="16" font-weight="700">COMPUTADOR 2</text>
+  </g>
+
+  <path d="M430 305 C470 305 485 305 525 305" stroke="#8bb8ff" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M875 305 C915 305 930 305 970 305" stroke="#8bb8ff" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M510 294l15 11-15 11M890 294l-15 11 15 11M955 294l15 11-15 11M445 294l-15 11 15 11" fill="none" stroke="#8bb8ff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="700" y="518" text-anchor="middle" fill="#dbeafe" font-family="Segoe UI, Arial, sans-serif" font-size="17">Windows 10/11 • Microsoft Edge • Roteador local • Impressora USB de 80 mm</text>
+</svg>

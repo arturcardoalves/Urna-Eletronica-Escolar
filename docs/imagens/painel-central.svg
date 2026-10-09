@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="620" viewBox="0 0 960 620" role="img" aria-labelledby="title desc">
+  <title id="title">Painel da Central da Eleição</title>
+  <desc id="desc">Representação do aplicativo da Central com estado do servidor e modos para abrir a Mesa.</desc>
+  <defs>
+    <filter id="s" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-opacity="0.18"/></filter>
+  </defs>
+  <rect width="960" height="620" rx="24" fill="#dfe8f1"/>
+  <g filter="url(#s)">
+    <rect x="35" y="32" width="890" height="550" rx="14" fill="#f2f5f9"/>
+  </g>
+  <rect x="35" y="32" width="890" height="42" rx="14" fill="#ffffff"/>
+  <circle cx="61" cy="53" r="6" fill="#e05a5a"/><circle cx="81" cy="53" r="6" fill="#e8b34a"/><circle cx="101" cy="53" r="6" fill="#4fb47b"/>
+  <text x="125" y="60" fill="#52657a" font-family="Segoe UI, Arial, sans-serif" font-size="16">Central da Eleição</text>
+
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <text x="78" y="130" fill="#143355" font-size="34" font-weight="700">Central da Eleição</text>
+    <text x="78" y="161" fill="#52657a" font-size="16">URNA ELETRÔNICA ESCOLAR  •  2.3.0</text>
+
+    <circle cx="88" cy="212" r="7" fill="#28a66a"/><text x="108" y="219" fill="#176b46" font-size="18">Servidor ativo — HTTPS verificado</text>
+    <circle cx="88" cy="252" r="7" fill="#28a66a"/><text x="108" y="259" fill="#176b46" font-size="18">Rede local: 192.168.0.100</text>
+    <circle cx="88" cy="292" r="7" fill="#28a66a"/><text x="108" y="299" fill="#176b46" font-size="18">Banco disponível • Eleição em preparação</text>
+    <circle cx="88" cy="332" r="7" fill="#28a66a"/><text x="108" y="339" fill="#176b46" font-size="18">Fonte Atkinson Hyperlegible instalada</text>
+
+    <rect x="78" y="380" width="220" height="52" rx="8" fill="#155eef"/>
+    <text x="188" y="413" text-anchor="middle" fill="#fff" font-size="17" font-weight="700">Abrir administração</text>
+
+    <rect x="322" y="368" width="555" height="104" rx="10" fill="#ffffff" stroke="#c8d4e0"/>
+    <text x="344" y="395" fill="#143355" font-size="16" font-weight="700">Abrir Mesa Eleitoral</text>
+    <rect x="344" y="410" width="145" height="42" rx="7" fill="#eaf2ff" stroke="#87aee7"/><text x="416" y="437" text-anchor="middle" fill="#143355" font-size="15">Normal</text>
+    <rect x="504" y="410" width="145" height="42" rx="7" fill="#eaf2ff" stroke="#87aee7"/><text x="576" y="437" text-anchor="middle" fill="#143355" font-size="15">Tela cheia</text>
+    <rect x="664" y="410" width="190" height="42" rx="7" fill="#143355"/><text x="759" y="437" text-anchor="middle" fill="#fff" font-size="15">Modo quiosque</text>
+
+    <rect x="78" y="492" width="275" height="48" rx="8" fill="#ffffff" stroke="#9eb0c2"/>
+    <text x="215" y="522" text-anchor="middle" fill="#143355" font-size="16">Conectar computador da urna</text>
+    <text x="877" y="553" text-anchor="end" fill="#52657a" font-size="14">Diagnóstico  •  Minimizar</text>
+  </g>
+</svg>

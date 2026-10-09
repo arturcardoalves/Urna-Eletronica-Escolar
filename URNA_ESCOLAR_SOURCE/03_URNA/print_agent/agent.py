@@ -30,7 +30,9 @@ else:
     IMPORT_ERROR = None
 
 
-app = FastAPI(title="Urna Escolar - Agente de Impressão", version="2.2.1")
+AGENT_VERSION = "2.3.0"
+
+app = FastAPI(title="Urna Escolar - Agente de Impressão", version=AGENT_VERSION)
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$",
@@ -945,7 +947,7 @@ def health():
         "ok": True,
         "windows": os.name == "nt",
         "pywin32": win32print is not None,
-        "version": "2.2.1",
+        "version": AGENT_VERSION,
         "modes": ["windows", "escpos"],
         "paper_width_mm": "A4/Carta: cédula 80x100 mm; térmica 80 mm: até 72 mm úteis",
         "escpos_cut": "partial",
@@ -973,7 +975,7 @@ def device_config():
     data = _device_setup()
     return {
         "ok": True,
-        "version": "2.2.1",
+        "version": AGENT_VERSION,
         "role": data.get("role", ""),
         "printer_name": data.get("printer_name", ""),
         "printer_mode": data.get("printer_mode", "escpos"),

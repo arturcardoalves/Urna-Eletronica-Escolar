@@ -1,10 +1,12 @@
 import sqlite3
+import tomllib
 from pathlib import Path
 import pytest
 import native_runtime
 from native_runtime import (PrintJournal, Api, APP_HOME, browser_arguments,
     normalize_cut_feed_mm, send_print)
-from print_agent.agent import PrintJob, _escpos_finish
+from app.config import APP_VERSION
+from print_agent.agent import PrintJob, _escpos_finish, app as print_agent_app, health as print_agent_health
 from upgrade_guard import check_and_backup
 
 
@@ -78,6 +80,18 @@ def test_browser_mode_and_surface_are_validated():
         browser_arguments('https://127.0.0.1:8443', 'unknown', 'admin')
     with pytest.raises(ValueError):
         browser_arguments('https://127.0.0.1:8443', 'normal', 'unknown')
+
+
+def test_public_version_is_consistent_across_components():
+    project = Path(__file__).resolve().parents[1]
+    metadata = tomllib.loads((project / 'URNA_ESCOLAR_SOURCE/01_SERVIDOR_ADMIN/pyproject.toml').read_text('utf-8'))
+    assert {
+        native_runtime.VERSION,
+        APP_VERSION,
+        print_agent_app.version,
+        print_agent_health()['version'],
+        metadata['project']['version'],
+    } == {'2.3.0'}
 
 
 @pytest.mark.parametrize('value,expected', [('10', 10), (30, 30), ('80', 80)])

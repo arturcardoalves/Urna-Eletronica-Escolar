@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="620" viewBox="0 0 960 620" role="img" aria-labelledby="title desc">
+  <title id="title">Painel da Urna de Votação</title>
+  <desc id="desc">Representação do aplicativo da Urna com conexão, modos de abertura e ajuste do corte.</desc>
+  <defs>
+    <filter id="s" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-opacity="0.18"/></filter>
+  </defs>
+  <rect width="960" height="620" rx="24" fill="#dfe8f1"/>
+  <g filter="url(#s)"><rect x="35" y="32" width="890" height="550" rx="14" fill="#f2f5f9"/></g>
+  <rect x="35" y="32" width="890" height="42" rx="14" fill="#ffffff"/>
+  <circle cx="61" cy="53" r="6" fill="#e05a5a"/><circle cx="81" cy="53" r="6" fill="#e8b34a"/><circle cx="101" cy="53" r="6" fill="#4fb47b"/>
+  <text x="125" y="60" fill="#52657a" font-family="Segoe UI, Arial, sans-serif" font-size="16">Urna de Votação</text>
+
+  <g font-family="Segoe UI, Arial, sans-serif">
+    <text x="78" y="126" fill="#143355" font-size="34" font-weight="700">Urna de Votação</text>
+    <text x="78" y="157" fill="#52657a" font-size="16">URNA ELETRÔNICA ESCOLAR  •  2.3.0</text>
+    <circle cx="88" cy="201" r="7" fill="#28a66a"/><text x="108" y="208" fill="#176b46" font-size="17">Servidor conectado — HTTPS verificado</text>
+    <circle cx="88" cy="235" r="7" fill="#28a66a"/><text x="108" y="242" fill="#176b46" font-size="17">Impressora configurada • Corte após 30 mm</text>
+
+    <rect x="78" y="270" width="800" height="91" rx="10" fill="#ffffff" stroke="#c8d4e0"/>
+    <text x="99" y="298" fill="#143355" font-size="16" font-weight="700">Abrir Urna de Votação</text>
+    <rect x="99" y="314" width="145" height="34" rx="7" fill="#eaf2ff" stroke="#87aee7"/><text x="171" y="337" text-anchor="middle" fill="#143355" font-size="14">Normal</text>
+    <rect x="258" y="314" width="145" height="34" rx="7" fill="#eaf2ff" stroke="#87aee7"/><text x="330" y="337" text-anchor="middle" fill="#143355" font-size="14">Tela cheia</text>
+    <rect x="417" y="314" width="180" height="34" rx="7" fill="#143355"/><text x="507" y="337" text-anchor="middle" fill="#fff" font-size="14">Modo quiosque</text>
+
+    <text x="78" y="401" fill="#143355" font-size="16" font-weight="700">Impressora USB deste computador</text>
+    <rect x="78" y="414" width="325" height="42" rx="7" fill="#fff" stroke="#9eb0c2"/><text x="96" y="441" fill="#52657a" font-size="15">Impressora térmica USB</text><path d="M378 431l7 8 7-8" fill="none" stroke="#52657a" stroke-width="2"/>
+    <rect x="417" y="414" width="200" height="42" rx="7" fill="#fff" stroke="#9eb0c2"/><text x="435" y="441" fill="#52657a" font-size="15">Térmica ESC/POS</text>
+    <rect x="632" y="414" width="110" height="42" rx="7" fill="#fff" stroke="#9eb0c2"/><text x="687" y="441" text-anchor="middle" fill="#143355" font-size="14">Atualizar</text>
+
+    <text x="78" y="489" fill="#143355" font-size="15">Espaço em branco antes do corte (mm)</text>
+    <rect x="360" y="466" width="95" height="38" rx="7" fill="#fff" stroke="#9eb0c2"/><text x="388" y="491" fill="#143355" font-size="16">30</text><path d="M433 477l7 6-7 6" fill="none" stroke="#52657a" stroke-width="2"/>
+    <rect x="78" y="520" width="430" height="42" rx="8" fill="#155eef"/>
+    <text x="293" y="547" text-anchor="middle" fill="#fff" font-size="15" font-weight="700">Imprimir teste completo de ficha, assinaturas e corte</text>
+    <text x="877" y="553" text-anchor="end" fill="#52657a" font-size="14">Diagnóstico  •  Minimizar</text>
+  </g>
+</svg>
