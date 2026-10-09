@@ -6,6 +6,7 @@ Base: pacote local Urna_Escolar_2.3.0. A revisão foi feita numa cópia; a pasta
 
 - O instalador deixou de empacotar `URNA_ESCOLAR_SOURCE/01_SERVIDOR_ADMIN/data`; o primeiro uso cria o banco, certificados e chaves no computador instalado.
 - O backup de atualização preserva bancos SQLite auxiliares e arquivados, inclusive dados ainda confirmados no WAL, e recusa links/junções para impedir cópia fora da pasta eleitoral.
+- Depois da cópia SQLite, o backup é normalizado para journal `DELETE`; os dados confirmados do WAL permanecem, sem deixar arquivos `-wal`/`-shm` no pacote de recuperação.
 - Os BATs de reset confirmam o papel instalado, exigem a mesma conta Windows, recusam processos abertos e recusam árvores com links/junções antes de apagar qualquer destino.
 - Uploads de chapa agora validam formato, tamanho, dimensões e normalizam a imagem para PNG; planilhas têm limites de expansão, linhas e colunas; entradas de chapa, urna, usuário e eleição são limitadas no servidor.
 - A instalação inicial fica restrita ao próprio computador da Central. A origem `null` e origens com esquema ou host diferente são recusadas nas operações de alteração.
@@ -46,7 +47,7 @@ Os testes, recursos da interface, scripts de verificação de integridade, gera�
 
 Na rodada anterior, a suíte desta cópia teve **38 testes aprovados** com Python 3.13. Com os testes de entrega adicionados, são **50 testes coletados**. O conjunto inclui eleição com 20 votos, apuração, PDF, voto repetido/concorrente sem duplicação, impressão com falha, reimpressão autorizada, desconexão, vinculação, modos do Edge, margem antes do corte, dados arquivados, imagens longas, reset e interface.
 
-Nesta rodada, os testes novos do pacote limpo passaram (**2 testes**), os testes de interface Node passaram (**9/9** no ambiente anterior) e o código foi compilado com `compileall`. A suíte completa precisa ser repetida no runner do GitHub depois da instalação de `httpx2`; o ambiente local atual não conseguiu baixar esse pacote e o TestClient do Starlette 1.7 fica incompatível com o `httpx` legado.
+Nesta rodada, os testes do pacote limpo passaram (**2 testes**), os testes de entrega Windows executáveis localmente passaram (**8 testes**, com o teste de TestClient legado separado), os testes de interface Node passaram (**9/9**) e o código foi compilado com `compileall`. A suíte completa precisa ser repetida no runner do GitHub depois da instalação de `httpx2`; o ambiente local atual não conseguiu baixar esse pacote e o TestClient do Starlette 1.7 fica incompatível com o `httpx` legado.
 
 O parser do PowerShell não encontrou erros de sintaxe no script de compilação. Os testes produziram 537 avisos de depreciação de bibliotecas/APIs existentes; não foram falhas. Esta revisão não migrou toda a aplicação para novos padrões de datas e lifecycle.
 

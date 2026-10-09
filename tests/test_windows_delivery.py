@@ -136,7 +136,13 @@ def test_reset_embedded_powershell_only_deletes_confirmed_role_data(tmp_path, ro
     env = dict(os.environ, RESET_TEST_LOCAL=str(local), RESET_TEST_MACHINE=str(machine), RESET_TEST_ROLE=role)
     ps = shutil.which('powershell.exe')
     assert ps
-    completed = subprocess.run([ps, '-NoProfile', '-File', str(script)], env=env, capture_output=True, text=True)
+    # The source tree may be tested on a workstation with AllSigned policy;
+    # this temporary regression script is generated locally by the test and
+    # is not downloaded code, so bypass only applies to this child process.
+    completed = subprocess.run(
+        [ps, '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', str(script)],
+        env=env, capture_output=True, text=True,
+    )
     assert completed.returncode == 0, completed.stderr
     assert not (local / 'UrnaEscolar').exists()
     assert (machine / 'UrnaEscolar' / 'role.json').exists()

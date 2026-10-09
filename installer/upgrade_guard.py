@@ -55,6 +55,11 @@ def check_and_backup(home):
                     with closing(sqlite3.connect(source.resolve().as_uri()+"?mode=ro", uri=True)) as original:
                         with closing(sqlite3.connect(destination/filename)) as copy:
                             original.backup(copy)
+                            # The source may have WAL enabled.  Keep all
+                            # committed pages, but ship the backup as a
+                            # self-contained rollback file without creating
+                            # -wal/-shm sidecars when it is opened later.
+                            copy.execute("PRAGMA journal_mode=DELETE")
                             if copy.execute("PRAGMA quick_check").fetchone()[0] != "ok":
                                 raise RuntimeError("O banco copiado não passou na verificação de integridade. Atualização cancelada.")
                 else:
