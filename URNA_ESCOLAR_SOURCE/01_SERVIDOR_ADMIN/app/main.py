@@ -67,7 +67,23 @@ async def security_headers(request: Request, call_next):
         if origin:
             from urllib.parse import urlparse
             parsed = urlparse(origin)
-            if parsed.scheme != request.url.scheme or parsed.netloc != request.url.netloc:
+            same_origin = parsed.scheme == request.url.scheme and parsed.netloc == request.url.netloc
+            # The first administrator is created only from the Central PC. A
+            # browser may still switch between https://localhost and
+            # https://127.0.0.1 while the setup page is open; both names are
+            # loopback aliases, so accepting that pair does not expose setup
+            # to another computer. The route itself performs the loopback
+            # client check in _require_local_setup().
+            loopback_setup_alias = False
+            if request.url.path == "/setup" and request.client and request.client.host in {"127.0.0.1", "::1", "testclient"}:
+                expected_port = request.url.port or (443 if request.url.scheme == "https" else 80)
+                origin_port = parsed.port or (443 if parsed.scheme == "https" else 80)
+                loopback_setup_alias = (
+                    parsed.scheme == request.url.scheme
+                    and parsed.hostname in {"localhost", "127.0.0.1", "::1"}
+                    and origin_port == expected_port
+                )
+            if not same_origin and not loopback_setup_alias:
                 return JSONResponse({"detail": "Origem da requisição não permitida."}, status_code=403)
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"

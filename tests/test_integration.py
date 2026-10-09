@@ -78,6 +78,21 @@ def test_first_install_opens_setup(client):
     assert client.get('/api/mesario/status').status_code == 401
 
 
+def test_first_setup_accepts_loopback_hostname_alias(client):
+    data = {'username': 'admin', 'display_name': 'Admin local', 'password': 'Senha-local-230!'}
+    accepted = client.post('/setup', headers={'Origin': 'https://localhost'}, data=data, follow_redirects=False)
+    assert accepted.status_code == 303 and accepted.headers['location'] == '/login'
+
+
+def test_first_setup_rejects_remote_origin(client):
+    response = client.post(
+        '/setup',
+        headers={'Origin': 'https://192.168.0.50:8443'},
+        data={'username': 'admin', 'display_name': 'Admin remoto', 'password': 'Senha-local-230!'},
+    )
+    assert response.status_code == 403
+
+
 def test_login_page_for_returning_install(prepared):
     prepared.cookies.clear()
     r = prepared.get('/mesario', follow_redirects=False)
