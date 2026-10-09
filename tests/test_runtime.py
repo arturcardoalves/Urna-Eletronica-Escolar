@@ -1,7 +1,10 @@
 import sqlite3
 from pathlib import Path
 import pytest
-from native_runtime import PrintJournal, Api, APP_HOME, browser_arguments
+import native_runtime
+from native_runtime import (PrintJournal, Api, APP_HOME, browser_arguments,
+    normalize_cut_feed_mm, send_print)
+from print_agent.agent import PrintJob, _escpos_finish
 from upgrade_guard import check_and_backup
 
 
@@ -75,6 +78,49 @@ def test_browser_mode_and_surface_are_validated():
         browser_arguments('https://127.0.0.1:8443', 'unknown', 'admin')
     with pytest.raises(ValueError):
         browser_arguments('https://127.0.0.1:8443', 'normal', 'unknown')
+
+
+@pytest.mark.parametrize('value,expected', [('10', 10), (30, 30), ('80', 80)])
+def test_cut_feed_accepts_safe_millimeter_range(value, expected):
+    assert normalize_cut_feed_mm(value) == expected
+
+
+@pytest.mark.parametrize('value', ['', 9, 81, 'abc', None])
+def test_cut_feed_rejects_invalid_or_unsafe_values(value):
+    with pytest.raises(ValueError):
+        normalize_cut_feed_mm(value)
+
+
+def test_escpos_advances_requested_distance_before_cut():
+    job = PrintJob(printer='TEST', cut=True, cut_feed_mm=80)
+    finish = _escpos_finish(job)
+    assert finish.endswith(b'\x1dV\x01')
+    feed = finish[:-3]
+    steps = []
+    while feed:
+        assert feed[:2] == b'\x1bJ'
+        steps.append(feed[2])
+        feed = feed[3:]
+    assert sum(steps) == round(80 * 203 / 25.4)
+    assert len(steps) == 3
+    assert _escpos_finish(PrintJob(printer='TEST', cut=False)) == b''
+
+
+def test_local_cut_setting_overrides_old_server_payload(monkeypatch):
+    captured = []
+
+    class FakeAgent:
+        class PrintJob:
+            def __init__(self, **values):
+                self.values = values
+
+        @staticmethod
+        def _print(job):
+            captured.append(job.values)
+
+    monkeypatch.setattr(native_runtime, 'renderer', lambda: FakeAgent)
+    send_print({'text': 'teste', 'cut_feed_mm': 10}, 'Térmica', 'escpos', 45)
+    assert captured[0]['cut_feed_mm'] == 45
 
 
 @pytest.mark.parametrize('state',['SEALED','OPEN'])

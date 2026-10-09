@@ -17,9 +17,9 @@ from tkinter import messagebox, ttk
 
 import lan_runtime
 from native_runtime import (APP_HOME, MACHINE_HOME, VERSION, CREATE_FLAGS, Api, PrintJournal,
-    acquire_instance, certificate_id, font_ready, install_certificate, list_printers,
+    DEFAULT_CUT_FEED_MM, acquire_instance, certificate_id, font_ready, install_certificate, list_printers,
     load_token, open_browser, printer_available, read_config, save_config, send_print,
-    store_token, verification_code)
+    normalize_cut_feed_mm, store_token, verification_code)
 
 ROOT = Path(sys.executable).resolve().parent.parent if getattr(sys, "frozen", False) else Path(__file__).resolve().parent.parent
 
@@ -98,8 +98,15 @@ class Desktop:
             mode_box.grid(row=1,column=1,padx=8)
             mode_box.bind("<<ComboboxSelected>>", self.printer_changed)
             ttk.Button(printers,text="Atualizar",command=lambda:self.background(self.refresh_printers)).grid(row=1,column=2)
-            ttk.Button(frame,text="Imprimir teste e conferir",command=lambda:self.background(self.test_printer)).pack(anchor="w",pady=10)
-            ttk.Label(frame,text="Instale o driver da impressora e a fonte Atkinson Hyperlegible (Regular e Bold).\nNo dia da eleição, confira o papel antes de abrir a votação.",wraplength=800).pack(anchor="w",pady=5)
+            ttk.Label(printers,text="Espaço em branco antes do corte (mm)").grid(row=2,column=0,sticky="w",pady=(10,0))
+            self.cut_feed_var = tk.StringVar(value=str(self.config.get("cut_feed_mm", DEFAULT_CUT_FEED_MM)))
+            cut_feed = ttk.Spinbox(printers,from_=10,to=80,increment=5,textvariable=self.cut_feed_var,width=8,command=self.printer_changed)
+            cut_feed.grid(row=2,column=1,sticky="w",padx=8,pady=(10,0))
+            cut_feed.bind("<FocusOut>", self.printer_changed)
+            cut_feed.bind("<Return>", self.printer_changed)
+            ttk.Label(printers,text="Aumente para afastar o texto da guilhotina").grid(row=2,column=2,sticky="w",pady=(10,0))
+            ttk.Button(frame,text="Imprimir teste completo de ficha, assinaturas e corte",command=lambda:self.background(self.test_printer)).pack(anchor="w",pady=10)
+            ttk.Label(frame,text="O teste imprime duas amostras. Confirme se a ficha, as três assinaturas e a área em branco saíram completas.\nO espaço escolhido será aplicado automaticamente a todas as impressões desta urna.",wraplength=800).pack(anchor="w",pady=5)
             self.background(self.refresh_printers)
             if self.config.get("server_id"):
                 self.background(self.connect_saved)
@@ -148,12 +155,12 @@ class Desktop:
                     if not self.printer_var.get() and len(args[0])==1:
                         self.printer_var.set(args[0][0]);self.printer_changed()
                 elif event=="test_confirm":
-                    if messagebox.askyesno("Conferir o papel","O teste saiu completo e legível, com acentos e corte corretos?",parent=self.root):
+                    if messagebox.askyesno("Conferir as duas amostras","A ficha e as três assinaturas saíram completas? O corte ocorreu depois da área em branco?",parent=self.root):
                         self.config["tested"]=args[0]; save_config(self.config)
                         self.notice.set("Teste confirmado. A disponibilidade será verificada automaticamente.")
                     else:
                         self.config.pop("tested",None);save_config(self.config)
-                        self.notice.set("Confira papel, driver e modo de impressão e repita o teste.")
+                        self.notice.set("Ajuste o espaço antes do corte, confira papel e driver e repita o teste.")
                 elif event=="closed": self.root.destroy();return
         except queue.Empty:
             pass
@@ -212,8 +219,19 @@ class Desktop:
 
     def printer_changed(self,event=None):
         self.config.pop("tested", None)
+        try:
+            spacing=normalize_cut_feed_mm(self.cut_feed_var.get())
+        except ValueError as exc:
+            self.ready=False
+            for button in self.start_buttons:
+                button.configure(state="disabled")
+            if hasattr(self,"notice"):
+                self.notice.set(str(exc))
+            return
         self.config["printer"]=self.printer_var.get()
         self.config["mode"]="escpos" if self.mode_var.get()=="Térmica ESC/POS" else "windows"
+        self.config["cut_feed_mm"]=spacing
+        self.cut_feed_var.set(str(spacing))
         save_config(self.config)
         self.ready=False
         for button in self.start_buttons:
@@ -222,11 +240,16 @@ class Desktop:
     def test_printer(self):
         if not font_ready(): raise RuntimeError("Instale Atkinson Hyperlegible Regular e Bold e tente novamente.")
         printer,mode=self.config.get("printer",""),self.config.get("mode","windows")
+        spacing=normalize_cut_feed_mm(self.cut_feed_var.get())
         if not printer: raise RuntimeError("Selecione a impressora deste computador.")
         if not printer_available(printer): raise RuntimeError("O Windows informa que a impressora está indisponível. Confira cabo, papel e driver.")
         payload={"text":"TESTE DE IMPRESSÃO", "title":"Teste Urna Escolar", "layout":"ballot", "paper":{"institution":"ESCOLA — TESTE", "election":"TESTE · NÃO É UM VOTO", "number":10, "slate":"CHAPA DE TESTE", "members":[], "instruction":"CONFIRA ACENTOS, LEGIBILIDADE E CORTE"}, "cut":True,"copies":1,"paper_width_mm":80}
-        send_print(payload,printer,mode)
-        self.emit("test_confirm",printer+"|"+mode)
+        send_print(payload,printer,mode,spacing)
+        signature_test={"text":"TESTE DE ASSINATURAS E CORTE\n\n________________________________\nAssinatura 1\n\n________________________________\nAssinatura 2\n\n________________________________\nAssinatura 3\n\nFIM DA ÁREA IMPRESSA\nO CORTE DEVE FICAR DEPOIS DO ESPAÇO EM BRANCO", "title":"Teste de assinaturas e corte", "layout":"text", "cut":True,"copies":1,"paper_width_mm":80}
+        send_print(signature_test,printer,mode,spacing)
+        self.config["cut_feed_mm"]=spacing
+        save_config(self.config)
+        self.emit("test_confirm",printer+"|"+mode+"|"+str(spacing))
 
     def connect_saved(self):
         token=load_token()
@@ -318,18 +341,19 @@ class Desktop:
                 else:
                     cfg=dict(self.config)
                     printer=cfg.get("printer","");mode=cfg.get("mode","windows")
-                    ready=fonts and cfg.get("tested")==printer+"|"+mode and printer_available(printer)
+                    spacing=normalize_cut_feed_mm(cfg.get("cut_feed_mm",DEFAULT_CUT_FEED_MM))
+                    ready=fonts and cfg.get("tested")==printer+"|"+mode+"|"+str(spacing) and printer_available(printer)
                     status=api.request("/api/native/heartbeat",{"printer_name":printer,"printer_mode":mode,"printer_ready":"true" if ready else "false"})
                     compatible=status.get("version")==VERSION
                     self.emit("row","server","Servidor conectado — HTTPS verificado" if compatible else "Versões diferentes. Atualize os dois computadores.",compatible)
-                    self.emit("row","detail","Impressora configurada • Teste confirmado" if ready else "Impressora: selecione, instale o driver e confira o teste",ready)
+                    self.emit("row","detail",f"Impressora configurada • Teste confirmado • Corte após {spacing} mm" if ready else f"Impressora: selecione, ajuste o corte ({spacing} mm) e confira as duas amostras",ready)
                     operational=compatible and (ready or not status["print_required"]) and fonts
                     self.emit("ready",operational)
                     self.emit("devices",cfg.get("urn_code","Urna")+" • "+{"PRINTING":"Imprimindo…","PRINT_ERROR":"Impressão requer intervenção do mesário.","IN_USE":"Votação em andamento","AVAILABLE":"Aguardando liberação da Mesa"}.get(status["status"],status["status"]))
                     if operational:
                         job=api.request("/api/native/print-job")
                         if job["pending"]:
-                            success=self.journal.perform(job["id"],lambda:send_print(job["payload"],printer,mode))
+                            success=self.journal.perform(job["id"],lambda:send_print(job["payload"],printer,mode,spacing))
                             api.request("/api/native/print-job/"+job["id"]+"/complete",{"success":"true" if success else "false"})
                             if not success:self.emit("notice","Não foi possível confirmar a impressão. Confira a impressora e peça ao mesário para autorizar a reimpressão.")
                 failures=0

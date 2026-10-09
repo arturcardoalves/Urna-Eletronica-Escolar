@@ -20,6 +20,9 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 
 VERSION = "2.3.0"
+DEFAULT_CUT_FEED_MM = 30
+MIN_CUT_FEED_MM = 10
+MAX_CUT_FEED_MM = 80
 APP_HOME = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "UrnaEscolar"
 MACHINE_HOME = Path(os.environ.get("PROGRAMDATA", str(Path.home()))) / "UrnaEscolar"
 CREATE_FLAGS = 0x08000000 if os.name == "nt" else 0
@@ -209,9 +212,29 @@ def printer_available(name):
         return False
 
 
-def send_print(payload, printer_name, mode):
+def normalize_cut_feed_mm(value):
+    try:
+        parsed = int(str(value).strip())
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Informe o espaço antes do corte em milímetros.") from exc
+    if not MIN_CUT_FEED_MM <= parsed <= MAX_CUT_FEED_MM:
+        raise ValueError(
+            f"O espaço antes do corte deve ficar entre {MIN_CUT_FEED_MM} e {MAX_CUT_FEED_MM} mm."
+        )
+    return parsed
+
+
+def send_print(payload, printer_name, mode, cut_feed_mm=DEFAULT_CUT_FEED_MM):
     agent = renderer()
-    job = agent.PrintJob(**{**payload, "printer": printer_name, "mode": mode})
+    spacing = normalize_cut_feed_mm(cut_feed_mm)
+    # A configuração local da impressora prevalece sobre dados antigos vindos
+    # do servidor e, assim, é aplicada a todos os tipos de documento.
+    job = agent.PrintJob(**{
+        **payload,
+        "printer": printer_name,
+        "mode": mode,
+        "cut_feed_mm": spacing,
+    })
     with print_lock:
         agent._print(job)
 

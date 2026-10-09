@@ -45,3 +45,9 @@ Após reproduzir a falha da Central instalada, corrigida a geração SKI/AKI dos
 ## Modos de abertura e conferência histórica
 
 Acrescentados os modos **Normal**, **Tela cheia** e **Modo quiosque** para a Mesa Eleitoral e a Urna. Cada combinação de área e modo recebe um perfil próprio do Edge, impedindo que uma janela já aberta faça o navegador ignorar o modo solicitado. A auditoria do pacote anterior está em AUDITORIA_FUNCOES_2.3.0.md. Suíte completa após esta alteração: **27 testes aprovados**, com os mesmos avisos de depreciação já conhecidos.
+
+## Margem de segurança antes do corte
+
+O painel da Urna agora permite configurar de **10 a 80 mm** de espaço em branco entre o último conteúdo e a guilhotina, com padrão de **30 mm**. O valor local é aplicado a todos os trabalhos da urna, inclusive ficha de voto, zerésima, boletim e texto operacional. O teste físico passou a imprimir duas amostras: ficha e três assinaturas. Alterar o valor invalida a confirmação anterior e exige novo teste.
+
+Foram acrescentados 10 testes para limites, conversão milimétrica ESC/POS, corte desativado e prevalência da configuração local. Os **22 testes do módulo de execução e impressão passaram** no ambiente temporário Python 3.12. A suíte completa permanece configurada no GitHub para Python 3.13; uma execução local da parte TLS em Python 3.12 não ativa `VERIFY_X509_STRICT`, diferença já coberta pela configuração oficial do workflow.

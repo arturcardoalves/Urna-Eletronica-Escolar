@@ -28,10 +28,11 @@ Não há seleção de impressora no computador da mesa. Mantenha a janela da Cen
 2. Abra o aplicativo **Urna de Votação** e clique **Procurar Central**.
 3. Compare o código mostrado nos dois PCs. Na Central, aprove somente se for igual. Na urna, clique **Códigos iguais — concluir conexão**.
 4. Selecione a impressora USB instalada no Windows. Comece por **Driver Windows**. Use ESC/POS somente se o modelo e o driver forem compatíveis e o teste sair correto.
-5. Clique **Imprimir teste e conferir** e confirme apenas se o papel sair completo, legível e com o corte esperado.
-6. Aguarde **Servidor conectado — HTTPS verificado** e escolha **Normal**, **Tela cheia** ou **Modo quiosque** na seção **Abrir Urna de Votação**. O modo quiosque é o recomendado no dia da eleição; use **Alt+F4** para retornar ao aplicativo.
+5. Em **Espaço em branco antes do corte**, comece com **30 mm**. O ajuste aceita de 10 a 80 mm e será aplicado à ficha de voto, zerésima, boletim de urna e demais impressões desse computador.
+6. Clique **Imprimir teste completo de ficha, assinaturas e corte**. O sistema imprime duas amostras. Confirme apenas se a ficha, as três assinaturas e a área em branco saírem completas, com o corte depois do conteúdo.
+7. Aguarde **Servidor conectado — HTTPS verificado** e escolha **Normal**, **Tela cheia** ou **Modo quiosque** na seção **Abrir Urna de Votação**. O modo quiosque é o recomendado no dia da eleição; use **Alt+F4** para retornar ao aplicativo.
 
-A confirmação de impressão deve ser repetida depois de reiniciar o aplicativo ou mudar a seleção/modo. Um driver pode informar “disponível” mesmo sem papel; o teste físico continua necessário. Não selecione impressoras PDF ou virtuais.
+A confirmação de impressão deve ser repetida depois de reiniciar o aplicativo ou mudar a impressora, o modo ou o espaço antes do corte. Se o texto ainda ficar perto da lâmina, aumente o valor em 5 mm e repita as duas amostras. Um driver pode informar “disponível” mesmo sem papel; o teste físico continua necessário. Não selecione impressoras PDF ou virtuais.
 
 ## Abra e encerre uma eleição de teste
 
@@ -46,6 +47,7 @@ A confirmação de impressão deve ser repetida depois de reiniciar o aplicativo
 
 - **Central não encontrada:** mantenha a Central aberta, habilite o vínculo por cinco minutos, confira cabos, mesma rede, data/hora e aviso de firewall. Use Procurar Central novamente. Se houver duas Centrais, feche a que não será utilizada.
 - **Conexão caiu:** o aplicativo tenta reencontrar a Central já vinculada. Se o IP mudar enquanto a cabine está aberta, a janela avisa; use Alt+F4 e Iniciar urna novamente. Não confirme outro voto enquanto a verificação estiver pendente.
+- **Texto foi cortado:** aumente o espaço antes do corte na Urna, repita o teste completo e confirme somente quando a ficha e as três assinaturas saírem inteiras. A mudança passa a valer para todas as impressões seguintes.
 - **Impressão não saiu:** confira papel, cabo e driver. Informe o problema ao mesário; somente ele autoriza a reimpressão. Confira e recolha qualquer cópia parcial ou duplicada antes de continuar.
 - **Computador reiniciou durante a impressão:** um trabalho de resultado incerto não é impresso novamente por conta própria. Resolva pela Mesa. O diário de impressão impede repetição automática da mesma solicitação.
 - **Fonte ausente:** instale as duas variantes na conta usada para executar o programa e abra novamente.

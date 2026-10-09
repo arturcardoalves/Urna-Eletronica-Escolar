@@ -2,7 +2,7 @@
 
 Código para dois computadores Windows: Central + Mesa Eleitoral e Urna + impressora USB. Esta revisão limpa corrige o bloqueio SQLite no teste do aplicativo e mantém a versão 2.3.0.
 
-Também corrige a Central que não reconhecia o servidor ativo por incompatibilidade do certificado com Python 3.13 e oferece abertura Normal, Tela cheia e Quiosque para Mesa e Urna. [Detalhes da correção HTTPS](docs/CORRECAO_HTTPS.md) · [Auditoria das funções](docs/AUDITORIA_FUNCOES_2.3.0.md). Total atual: 27 testes aprovados.
+Também corrige a Central que não reconhecia o servidor ativo por incompatibilidade do certificado com Python 3.13, oferece abertura Normal, Tela cheia e Quiosque para Mesa e Urna e permite calibrar o espaço antes do corte da impressora. [Detalhes da correção HTTPS](docs/CORRECAO_HTTPS.md) · [Auditoria das funções](docs/AUDITORIA_FUNCOES_2.3.0.md). Total atual: 37 testes automatizados.
 
 ## Gerar o EXE
 
@@ -33,4 +33,4 @@ Saída: `installer/output/Instalar_Urna_Escolar_2.3.0.exe`. A compilação local
 
 Os BATs redundantes, assistente antigo, lançadores HTA e resultados antigos foram retirados. O PowerShell, os arquivos `.spec` e `UrnaEscolar.iss` são necessários para criar o EXE e foram mantidos.
 
-Somente a urna imprime. A Central deve permanecer aberta ou minimizada durante a eleição. Antes do uso, teste os dois PCs, rede, impressora, corte, fonte Atkinson Hyperlegible Regular/Bold, zerésima, votação e boletim final.
+Somente a urna imprime. A Central deve permanecer aberta ou minimizada durante a eleição. Na Urna, ajuste o espaço antes do corte e execute o teste completo de ficha e assinaturas; esse valor é aplicado a todas as impressões. Antes do uso, teste os dois PCs, rede, impressora, corte, fonte Atkinson Hyperlegible Regular/Bold, zerésima, votação e boletim final.

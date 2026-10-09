@@ -8,6 +8,7 @@ TEST_DATA = tempfile.TemporaryDirectory(prefix='urna-230-tests-')
 os.environ['URNA_DATA_DIR'] = TEST_DATA.name
 os.environ['URNA_DB_PATH'] = str(Path(TEST_DATA.name) / 'test.db')
 sys.path.insert(0, str(ROOT / 'URNA_ESCOLAR_SOURCE/01_SERVIDOR_ADMIN'))
+sys.path.insert(0, str(ROOT / 'URNA_ESCOLAR_SOURCE/03_URNA'))
 sys.path.insert(0, str(ROOT / 'installer'))
 
 import pytest

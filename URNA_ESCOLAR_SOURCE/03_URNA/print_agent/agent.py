@@ -42,6 +42,10 @@ app.add_middleware(
 _lock = threading.Lock()
 _last_failed_job: dict[str, Any] | None = None
 
+DEFAULT_CUT_FEED_MM = 30
+MIN_CUT_FEED_MM = 10
+MAX_CUT_FEED_MM = 80
+
 
 class PrintJob(BaseModel):
     printer: str
@@ -55,6 +59,36 @@ class PrintJob(BaseModel):
     # windows = driver instalado no Windows; escpos = RAW ESC/POS.
     mode: str = "windows"
     paper_width_mm: int = 0
+    # Espaço físico entre o último conteúdo e a lâmina da impressora térmica.
+    cut_feed_mm: int = DEFAULT_CUT_FEED_MM
+
+
+def _normalized_cut_feed_mm(value: Any) -> int:
+    """Limita o avanço a uma faixa segura, inclusive para clientes antigos."""
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        parsed = DEFAULT_CUT_FEED_MM
+    return max(MIN_CUT_FEED_MM, min(parsed, MAX_CUT_FEED_MM))
+
+
+def _escpos_finish(job: PrintJob) -> bytes:
+    """Avança o papel pela distância configurada e só então aciona o corte.
+
+    ESC J usa unidades verticais de aproximadamente 1/203 de polegada nas
+    térmicas ESC/POS usuais. O comando é dividido porque cada avanço aceita
+    no máximo 255 unidades.
+    """
+    if not job.cut:
+        return b""
+    remaining = round(_normalized_cut_feed_mm(job.cut_feed_mm) * 203 / 25.4)
+    output = bytearray()
+    while remaining > 0:
+        step = min(remaining, 255)
+        output.extend(b"\x1bJ" + bytes([step]))
+        remaining -= step
+    output.extend(b"\x1dV\x01")
+    return bytes(output)
 
 
 def _require_windows():
@@ -306,11 +340,7 @@ def _escpos_ballot(job: PrintJob) -> bytes:
         for line in _wrap_pil(draw, instruction, instruction_font, inner_w)[:2]:
             iy += _draw_center_pil(draw, line, instruction_font, cx, iy) + 4
 
-    out = b"\x1b@" + _escpos_raster_bytes(image)
-    out += b"\n"
-    if job.cut:
-        out += b"\x1dV\x01"
-    return out
+    return b"\x1b@" + _escpos_raster_bytes(image) + _escpos_finish(job)
 
 
 
@@ -552,10 +582,7 @@ def _escpos_receipt(job: PrintJob) -> bytes:
     else:
         raise RuntimeError('Layout de recibo não suportado.')
 
-    out = b"\x1b@" + _escpos_raster_bytes(image) + b"\n"
-    if job.cut:
-        out += b"\x1dV\x01"
-    return out
+    return b"\x1b@" + _escpos_raster_bytes(image) + _escpos_finish(job)
 
 
 def _escpos_bytes(job: PrintJob | str, cut: bool = True, layout: str = "text", paper: dict[str, Any] | None = None) -> bytes:
@@ -569,10 +596,7 @@ def _escpos_bytes(job: PrintJob | str, cut: bool = True, layout: str = "text", p
         return _escpos_receipt(job)
 
     body = job.text.replace("\r\n", "\n").replace("\r", "\n")
-    out = b"\x1b@\x1bt\x02\x1ba\x00" + _enc(body) + b"\n\n"
-    if job.cut:
-        out += b"\n\x1dV\x01"
-    return out
+    return b"\x1b@\x1bt\x02\x1ba\x00" + _enc(body) + b"\n" + _escpos_finish(job)
 
 
 def _escpos_print(job: PrintJob):
@@ -844,6 +868,8 @@ def _windows_ballot_page(dc, job: PrintJob, printable_w: int, printable_h: int, 
         finally:
             dc.SelectObject(old)
 
+    return bottom
+
 
 def _windows_print(job: PrintJob):
     """Print via the normal Windows driver (GDI)."""
@@ -876,7 +902,7 @@ def _windows_print(job: PrintJob):
             dc.StartPage()
             try:
                 if job.layout == "ballot" and job.paper:
-                    _windows_ballot_page(dc, job, printable_w, printable_h, dpi_x, dpi_y)
+                    content_bottom = _windows_ballot_page(dc, job, printable_w, printable_h, dpi_x, dpi_y)
                 else:
                     y = margin_y
                     line_height = max(15, int(4.2 * mmy))
@@ -886,6 +912,15 @@ def _windows_print(job: PrintJob):
                                 dc.EndPage(); dc.StartPage(); y = margin_y
                             dc.TextOut(margin_x, y, line)
                             y += line_height
+                    content_bottom = y
+
+                # Alguns drivers de térmica calculam o fim do documento pelo
+                # último comando GDI. Um espaço no ponto final força o driver a
+                # manter a margem configurada sem deixar marca no papel.
+                feed_bottom = content_bottom + int(_normalized_cut_feed_mm(job.cut_feed_mm) * mmy)
+                safe_bottom = min(feed_bottom, printable_h - margin_y - 1)
+                if safe_bottom > content_bottom:
+                    dc.TextOut(margin_x, safe_bottom, " ")
                 dc.EndPage()
                 dc.EndDoc()
             finally:
@@ -914,6 +949,7 @@ def health():
         "modes": ["windows", "escpos"],
         "paper_width_mm": "A4/Carta: cédula 80x100 mm; térmica 80 mm: até 72 mm úteis",
         "escpos_cut": "partial",
+        "cut_feed_mm": {"default": DEFAULT_CUT_FEED_MM, "min": MIN_CUT_FEED_MM, "max": MAX_CUT_FEED_MM},
         "ballot_layout": "Atkinson Hyperlegible; equal halves; instruction below fold; automatic wrapping",
         "receipt_layouts": ["zero_receipt", "result_receipt"],
         "escpos_codepage": "raster image",
