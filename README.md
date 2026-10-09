@@ -10,7 +10,7 @@
 ![Python](https://img.shields.io/badge/Python-3.13-3776ab?logo=python&logoColor=white)
 ![Uso](https://img.shields.io/badge/uso-educacional-176b46)
 
-[Instalação e uso](docs/GUIA_2.3.0.md) · [Gerar o instalador](docs/GERAR_EXE_NO_GITHUB.md) · [Segurança](SEGURANCA.md) · [Versões](docs/CHANGELOG.md) · [Revisão técnica](docs/REVISAO_CODIGO.md)
+[Instalação e uso](docs/GUIA_2.3.0.md) · [Resetar dados de teste](docs/RESETAR_SISTEMA.md) · [Gerar o instalador](docs/GERAR_EXE_NO_GITHUB.md) · [Segurança](SEGURANCA.md) · [Versões](docs/CHANGELOG.md)
 
 </div>
 
@@ -178,6 +178,7 @@ Testes automatizados não comprovam o funcionamento físico do roteador, cabos, 
 
 - [Guia de instalação e operação](docs/GUIA_2.3.0.md)
 - [Como enviar ao GitHub e gerar o EXE](docs/GERAR_EXE_NO_GITHUB.md)
+- [Como limpar uma eleição ou resetar tudo](docs/RESETAR_SISTEMA.md)
 - [Histórico de versões](docs/CHANGELOG.md)
 - [Segurança e privacidade](SEGURANCA.md)
 - [Auditoria das funções preservadas](docs/AUDITORIA_FUNCOES_2.3.0.md)

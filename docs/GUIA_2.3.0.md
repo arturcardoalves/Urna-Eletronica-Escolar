@@ -60,6 +60,10 @@ Ligar roteador e PCs → abrir Central e Urna → conferir conexão → testar o
 
 O programa usa arquivos internos instalados automaticamente. “Um arquivo” significa um único instalador entregue a você, não ausência de arquivos internos no Windows.
 
+## Depois de uma eleição de teste
+
+Se quiser iniciar outra eleição e manter os usuários, senhas, vínculo da Urna e impressora, encerre a votação e use **Administrador → Histórico → Iniciar nova eleição**. Para apagar também senhas, certificados, vínculos e configurações locais, siga [RESETAR_SISTEMA.md](RESETAR_SISTEMA.md). Feche a Central e a Urna antes de executar o reset completo.
+
 ## Limites da validação
 
 Os testes automatizados verificam lógica, vínculo, transações, recuperação e empacotamento quando executados no Windows. Não comprovam o driver da Epson, o corte, falta de papel, desempenho dos PCs da escola nem a descoberta no roteador real. Antes da eleição oficial, faça uma eleição completa de teste nos dois equipamentos. Consulte REVISAO_CODIGO.md para os resultados efetivamente obtidos nesta entrega.
