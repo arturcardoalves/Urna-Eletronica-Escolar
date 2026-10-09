@@ -54,6 +54,21 @@ jobs:
           path: installer/output/Instalar_Urna_Escolar_2.3.0.exe
           if-no-files-found: error
 
+      - name: Montar pacote de fonte limpo
+        shell: powershell
+        run: |
+          New-Item -ItemType Directory -Force .\release-output | Out-Null
+          python .\installer\package_source.py --output .\release-output\Urna_Escolar_2.3.0_Fonte_Limpa.zip
+
+      - name: Publicar pacote de fonte limpo
+        uses: actions/upload-artifact@v4
+        with:
+          name: Urna-Eletronica-Escolar-Fonte-Limpa-2.3.0
+          path: |
+            release-output/Urna_Escolar_2.3.0_Fonte_Limpa.zip
+            release-output/Urna_Escolar_2.3.0_Fonte_Limpa.zip.sha256.txt
+          if-no-files-found: error
+
       - name: Guardar logs em caso de falha
         if: always()
         uses: actions/upload-artifact@v4

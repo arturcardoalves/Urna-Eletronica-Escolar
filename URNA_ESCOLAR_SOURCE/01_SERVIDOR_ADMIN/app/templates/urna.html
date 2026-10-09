@@ -31,12 +31,13 @@
         <div class="selection-footer"><div></div><div class="slate-page-controls hidden" id="slatePageControls"><button type="button" id="slatePrev">‹ Anterior</button><span id="slatePageLabel"></span><button type="button" id="slateNext">Próxima ›</button></div>{% if election.allow_blank %}<button class="blank-option" id="blankChoice">BRANCO</button>{% else %}<div></div>{% endif %}</div>
       </div>
       <div id="selectionReview" class="review-card hidden"><span class="ballot-kicker">CONFIRA SEU VOTO</span><div id="reviewContent"></div><div class="review-actions"><button class="review-correct" id="selectionCorrect">CORRIGIR</button><button class="review-confirm" id="selectionConfirm">CONFIRMAR</button></div></div>
+      <div id="selectionNotice" class="numeric-notice" role="alert" aria-live="assertive"></div>
     </section>
 
     <section id="numericMode" class="ballot-content numeric-content {% if (urn.voting_mode_override if urn.voting_mode_override and urn.voting_mode_override != 'INHERIT' else election.voting_mode) != 'NUMERIC' %}hidden{% endif %}">
       <span class="ballot-kicker">GRÊMIO ESTUDANTIL</span><h1 class="numeric-title">Digite o número da chapa</h1>
       <div class="numeric-layout single"><div class="numeric-main"><div class="number-column"><span class="number-caption">NÚMERO</span><div class="number-display" id="numberDisplay"><span>_</span><span>_</span></div></div><div id="candidatePreview" class="candidate-preview"><div class="candidate-empty"><b>AGUARDANDO DIGITAÇÃO</b><span>Digite os dois números da chapa.</span></div></div></div></div>
-      <div id="numericNotice" class="numeric-notice"></div>
+      <div id="numericNotice" class="numeric-notice" role="alert" aria-live="assertive"></div>
       <div class="urn-instruction-bar"><b>Aperte a tecla:</b><div class="instruction-lines"><span><strong>CONFIRMA</strong> para confirmar este voto</span><span><strong>CORRIGE</strong> para reiniciar este voto</span></div></div>
     </section>
   </section>
@@ -47,7 +48,7 @@
 <script>
 window.SLATE_DATA={{ slates|map(attribute='number')|list|tojson }};
 window.SLATE_DETAILS={
-{% for s in slates %}"{{ s.number }}": {"number": {{ s.number }}, "name": {{ s.name|tojson }}, "logo": {{ s.logo_path|tojson }}, "members": [{% for m in s.members %}{"role": {{ m.role_name|tojson }}, "name": {{ m.person_name|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}]}{% if not loop.last %},{% endif %}{% endfor %}
+{% for s in slates %}"{{ s.number }}": {"number": {{ s.number }}, "name": {{ s.name|tojson }}, "logo": {{ s.logo_path|tojson }}, "members": [{% if election.show_members_on_ballot %}{% for m in s.members %}{"role": {{ m.role_name|tojson }}, "name": {{ m.person_name|tojson }}}{% if not loop.last %},{% endif %}{% endfor %}{% endif %}]}{% if not loop.last %},{% endif %}{% endfor %}
 };
 </script>
 <script src="/static/urna.js?v={{ app_version }}"></script>

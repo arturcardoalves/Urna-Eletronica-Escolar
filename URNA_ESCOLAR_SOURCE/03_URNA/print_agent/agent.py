@@ -6,7 +6,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -33,6 +33,25 @@ else:
 AGENT_VERSION = "2.3.0"
 
 app = FastAPI(title="Urna Escolar - Agente de Impressão", version=AGENT_VERSION)
+
+
+@app.middleware("http")
+async def require_local_client(request: Request, call_next):
+    """The optional legacy HTTP agent may only serve this computer.
+
+    The installed application imports this module directly and never opens an
+    HTTP listener. This check also protects source-mode users who accidentally
+    bind the old agent to 0.0.0.0.
+    """
+    import ipaddress
+    from starlette.responses import JSONResponse
+    try:
+        local = request.client is not None and ipaddress.ip_address(request.client.host).is_loopback
+    except ValueError:
+        local = False
+    if not local:
+        return JSONResponse({"detail": "O agente de impressão aceita apenas conexões deste computador."}, status_code=403)
+    return await call_next(request)
 app.add_middleware(
     CORSMiddleware,
     allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$",
@@ -233,9 +252,14 @@ def _escpos_raster_bytes(image) -> bytes:
 
     xL = width_bytes & 0xFF
     xH = (width_bytes >> 8) & 0xFF
-    yL = height & 0xFF
-    yH = (height >> 8) & 0xFF
-    return b"\x1d\x76\x30\x00" + bytes([xL, xH, yL, yH]) + bytes(data)
+    # Raster height has only two bytes. Small strips also avoid overrunning
+    # typical receipt printer buffers on a long zerésima or bulletin.
+    chunks = []
+    for row in range(0, height, 512):
+        rows = min(512, height - row)
+        header = b"\x1d\x76\x30\x00" + bytes([xL, xH, rows & 0xFF, rows >> 8])
+        chunks.append(header + bytes(data[row * width_bytes:(row + rows) * width_bytes]))
+    return b"".join(chunks)
 
 
 def _enc(value: str) -> bytes:
@@ -243,10 +267,6 @@ def _enc(value: str) -> bytes:
         return value.encode("cp850", errors="replace")
     except LookupError:
         return value.encode("latin-1", errors="replace")
-
-
-def _center_text(text: str, columns: int = 42) -> bytes:
-    return _enc(text[:columns].center(columns)) + b"\n"
 
 
 def _escpos_ballot(job: PrintJob) -> bytes:
@@ -385,9 +405,26 @@ def _receipt_kv(draw, pairs: list[tuple[str, str]], y: int, label_x: int = 24, v
     return y
 
 
+def _receipt_canvas_height(paper: dict[str, Any]) -> int:
+    """Reserve room for all slates and names instead of silently clipping.
+
+    The bounds cover detail, summary and result cards, using real wrapping
+    metrics. Receipts are trimmed to their actual final position afterwards.
+    """
+    draw = ImageDraw.Draw(Image.new("L", (1, 1), 255))
+    height = 3000
+    for slate in paper.get("slates") or []:
+        name_lines = len(_wrap_pil(draw, str(slate.get("name") or ""), _pil_font(24, True), 330))
+        height += 400 + name_lines * 160
+        for member in slate.get("members") or []:
+            line = f"{member.get('role')}: {member.get('name')}"
+            height += max(1, len(_wrap_pil(draw, line, _pil_font(19, False), 528))) * 32
+    return height
+
+
 def _render_zero_receipt_image(paper: dict[str, Any]):
     width = 576
-    image = Image.new("L", (width, 5200), 255)
+    image = Image.new("L", (width, _receipt_canvas_height(paper)), 255)
     draw = ImageDraw.Draw(image)
     y = 18
 
@@ -472,13 +509,15 @@ def _render_zero_receipt_image(paper: dict[str, Any]):
         draw.text((60, y + 122), f'Assinatura {idx}', font=_pil_font(21, True), fill=0)
         y += 166
 
-    cropped = image.crop((0, 0, width, min(image.size[1], y + 20)))
+    if y + 20 > image.height:
+        raise RuntimeError("O recibo excede a área preparada. Impressão cancelada para não cortar informações.")
+    cropped = image.crop((0, 0, width, y + 20))
     return cropped
 
 
 def _render_result_receipt_image(paper: dict[str, Any]):
     width = 576
-    image = Image.new('L', (width, 7000), 255)
+    image = Image.new('L', (width, _receipt_canvas_height(paper)), 255)
     draw = ImageDraw.Draw(image)
     y = 18
 
@@ -570,7 +609,9 @@ def _render_result_receipt_image(paper: dict[str, Any]):
         draw.text((60, y + 122), f'Assinatura {idx}', font=_pil_font(21, True), fill=0)
         y += 166
 
-    cropped = image.crop((0, 0, width, min(image.size[1], y + 20)))
+    if y + 20 > image.height:
+        raise RuntimeError("O recibo excede a área preparada. Impressão cancelada para não cortar informações.")
+    cropped = image.crop((0, 0, width, y + 20))
     return cropped
 
 
@@ -603,15 +644,22 @@ def _escpos_bytes(job: PrintJob | str, cut: bool = True, layout: str = "text", p
 
 def _escpos_print(job: PrintJob):
     _require_windows()
+    payload = _escpos_bytes(job)
     h = win32print.OpenPrinter(job.printer)
     try:
         for _ in range(max(1, min(job.copies, 20))):
             win32print.StartDocPrinter(h, 1, (job.title, None, "RAW"))
             try:
                 win32print.StartPagePrinter(h)
-                win32print.WritePrinter(h, _escpos_bytes(job))
+                if win32print.WritePrinter(h, payload) != len(payload):
+                    raise OSError("O driver recebeu somente parte do documento.")
                 win32print.EndPagePrinter(h)
-            finally:
+            except Exception:
+                # Do not finish and release a partial ballot as a successful
+                # spool job after an exception in drawing/transmission.
+                win32print.AbortPrinter(h)
+                raise
+            else:
                 win32print.EndDocPrinter(h)
     finally:
         win32print.ClosePrinter(h)
@@ -758,7 +806,9 @@ def _windows_ballot_page(dc, job: PrintJob, printable_w: int, printable_h: int, 
         top_mm = 2.0
 
     target_w = min(printable_w - 8, int(ballot_w_mm * mmx))
-    target_h = min(printable_h - int(top_mm * mmy) - 4, int(ballot_h_mm * mmy))
+    target_h = int(ballot_h_mm * mmy)
+    if target_h > printable_h - int(top_mm * mmy) - 4:
+        raise RuntimeError("A altura de papel configurada no driver não comporta a ficha e a margem antes do corte. Aumente a altura nas preferências da impressora e repita o teste.")
 
     left = max(4, (printable_w - target_w) // 2)
     right = min(printable_w - 4, left + target_w)
@@ -898,19 +948,24 @@ def _windows_print(job: PrintJob):
             right = min(printable_w - 4, margin_x + content_w)
             max_width = max(100, right - margin_x)
             margin_y = max(4, int(3 * mmy))
+            feed_pixels = int(_normalized_cut_feed_mm(job.cut_feed_mm) * mmy)
+            content_limit = printable_h - margin_y - feed_pixels - 1
+            if content_limit <= margin_y + int(10 * mmy):
+                raise RuntimeError("O tamanho de papel do driver não comporta a margem antes do corte. Aumente a altura do papel nas preferências da impressora.")
             fnt = _mono_font(dpi_y, 9.2, 400)
             old_font = dc.SelectObject(fnt)
             dc.StartDoc(job.title)
             dc.StartPage()
             try:
                 if job.layout == "ballot" and job.paper:
-                    content_bottom = _windows_ballot_page(dc, job, printable_w, printable_h, dpi_x, dpi_y)
+                    content_bottom = _windows_ballot_page(dc, job, printable_w, content_limit, dpi_x, dpi_y)
                 else:
                     y = margin_y
                     line_height = max(15, int(4.2 * mmy))
                     for paragraph in job.text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
                         for line in _wrap_line(dc, paragraph, max_width):
-                            if y + line_height >= printable_h - margin_y:
+                            if y + line_height >= content_limit:
+                                dc.TextOut(margin_x, y + feed_pixels, " ")
                                 dc.EndPage(); dc.StartPage(); y = margin_y
                             dc.TextOut(margin_x, y, line)
                             y += line_height
@@ -919,12 +974,15 @@ def _windows_print(job: PrintJob):
                 # Alguns drivers de térmica calculam o fim do documento pelo
                 # último comando GDI. Um espaço no ponto final força o driver a
                 # manter a margem configurada sem deixar marca no papel.
-                feed_bottom = content_bottom + int(_normalized_cut_feed_mm(job.cut_feed_mm) * mmy)
+                feed_bottom = content_bottom + feed_pixels
                 safe_bottom = min(feed_bottom, printable_h - margin_y - 1)
                 if safe_bottom > content_bottom:
                     dc.TextOut(margin_x, safe_bottom, " ")
                 dc.EndPage()
                 dc.EndDoc()
+            except Exception:
+                dc.AbortDoc()
+                raise
             finally:
                 dc.SelectObject(old_font)
         finally:

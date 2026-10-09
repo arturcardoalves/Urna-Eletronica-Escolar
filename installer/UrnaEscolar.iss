@@ -76,12 +76,15 @@ begin
 end;
 
 procedure InitializeWizard;
-var RequestedRole: String;
+var RequestedRole, DefaultRole: String; SavedRole: AnsiString;
 begin
   RolePage := CreateInputOptionPage(wpWelcome, 'Como este computador será utilizado?', 'Use o mesmo instalador nos dois computadores.', 'No computador da mesa, escolha Central. No computador conectado à impressora, escolha Urna.', True, False);
   RolePage.Add('Central da Eleição + Mesa Eleitoral (computador 1)');
   RolePage.Add('Urna de votação + impressora USB (computador 2)');
-  RequestedRole := ExpandConstant('{param:ROLE|central}');
+  DefaultRole := 'central';
+  if LoadStringFromFile(ExpandConstant('{commonappdata}\UrnaEscolar\role.json'), SavedRole) then
+    if Pos('"urna"', String(SavedRole)) > 0 then DefaultRole := 'urna';
+  RequestedRole := ExpandConstant('{param:ROLE|' + DefaultRole + '}');
   if RequestedRole = 'urna' then RolePage.SelectedValueIndex := 1 else RolePage.SelectedValueIndex := 0;
 end;
 

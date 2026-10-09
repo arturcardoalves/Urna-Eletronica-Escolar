@@ -11,7 +11,7 @@ from .config import APP_VERSION, PUBLIC_KEY_PATH, MAX_URNS, DATA_DIR, BASE_DIR
 from .internal_key import ensure_internal_keypair
 from .models import (
     AnonymousVotingAuthorization, AuditEvent, Ballot, Election, ElectionState, Slate, Urn, UrnStatus, User, UserRole,
-    Voter, VoterStatus, VotingAuthorization, Setting, VoterAmendment,
+    Voter, VoterStatus, VotingAuthorization, Setting, VoterAmendment, NativeVoteState,
 )
 from .security import canonical_json, encrypt_ballot, random_token, sha256_text
 from .integrity import current_software_hash, public_key_fingerprint, verify_audit_chain
@@ -304,6 +304,14 @@ def close_election(db: Session, actor: str) -> Election:
         raise DomainError("Resolva a impressão pendente antes de encerrar a eleição.")
     election.state = ElectionState.CLOSED.value
     election.closed_at = datetime.utcnow()
+    # No reprint is needed after all ballots have printed and voting is closed.
+    # Do not carry the last plaintext-equivalent print payload into archives.
+    for state in db.scalars(select(NativeVoteState)).all():
+        state.encrypted_payload = ""
+    for urn in db.scalars(select(Urn)).all():
+        urn.pending_reprint_ballot_id = None
+        urn.reprint_authorized = False
+        urn.last_vote_at = None
     append_audit(db, "ELECTION_CLOSED", actor, {})
     return election
 
@@ -394,7 +402,10 @@ def cast_vote(db: Session, urn_code: str, token: str, choice: dict) -> str:
             raise DomainError("Voto em branco está desabilitado.")
         ballot_payload = {"type": "blank"}
     elif choice.get("type") == "slate":
-        slate_number = int(choice.get("number"))
+        try:
+            slate_number = int(choice.get("number"))
+        except (TypeError, ValueError):
+            raise DomainError("Número de chapa inválido.") from None
         slate = db.execute(select(Slate).where(Slate.number == slate_number, Slate.active == True)).scalar_one_or_none()
         if not slate:
             raise DomainError("Número de chapa inválido.")
@@ -459,4 +470,3 @@ def cast_vote(db: Session, urn_code: str, token: str, choice: dict) -> str:
     urn.reprint_authorized = False
     # Não criamos evento de auditoria por voto individual para evitar reconstrução da ordem de votação.
     return ballot.id
-

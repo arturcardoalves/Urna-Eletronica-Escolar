@@ -17,6 +17,7 @@ def _sqlite_pragmas(dbapi_connection, _connection_record):
     cur.execute("PRAGMA foreign_keys=ON")
     cur.execute("PRAGMA journal_mode=WAL")
     cur.execute("PRAGMA synchronous=FULL")
+    cur.execute("PRAGMA secure_delete=ON")
     cur.close()
 
 

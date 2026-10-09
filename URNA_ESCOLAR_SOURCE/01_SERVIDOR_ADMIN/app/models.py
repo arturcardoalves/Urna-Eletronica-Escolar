@@ -194,6 +194,10 @@ class AnonymousVotingAuthorization(Base):
 
 class Ballot(Base):
     __tablename__ = "ballots"
+    # New installations use random UUIDs as the physical SQLite primary key,
+    # avoiding the hidden sequential rowid of ordinary TEXT-primary-key tables.
+    # Existing elections are left intact by create_all (no destructive rewrite).
+    __table_args__ = {"sqlite_with_rowid": False}
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     ciphertext: Mapped[str] = mapped_column(Text)
     previous_hash: Mapped[str] = mapped_column(String(64))

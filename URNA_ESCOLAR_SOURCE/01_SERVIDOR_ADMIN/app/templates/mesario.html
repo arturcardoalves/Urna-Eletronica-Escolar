@@ -10,6 +10,7 @@
       <span id="stationStatePill" class="station-state station-state-{{ election.state|lower }}">{{ election.state }}</span>
     </div>
   </header>
+  <div id="stationConnectionStatus" class="warning-box hidden" role="alert"></div>
 
   <div id="paperChangeAlert" class="paper-change-alert hidden" role="status" aria-live="polite">
     <div><span class="paper-change-kicker">SUPRIMENTO DA URNA</span><b id="paperChangeTitle">Troca de papel necessária</b><small id="paperChangeText"></small></div>
@@ -35,7 +36,7 @@
 
   <section id="stationClosed" class="station-closed {% if election.state != 'CLOSED' %}hidden{% endif %}">
     <div class="station-closed-icon">✓</div><span class="eyebrow">VOTAÇÃO ENCERRADA</span><h1>ELEIÇÃO FINALIZADA</h1><p>A votação foi encerrada. O boletim final permanece disponível para consulta e reimpressão.</p>
-    {% if election.final_tally_json %}<div class="closed-actions"><a class="btn secondary" target="_blank" href="/reports/result.pdf">Visualizar boletim final</a></div><div id="closedPrintStatus" class="station-operation-status"></div>{% endif %}
+    <div class="closed-actions"><a class="btn secondary" target="_blank" rel="noopener" href="/reports/result.pdf">Visualizar boletim final</a></div><div id="closedPrintStatus" class="station-operation-status" role="status" aria-live="polite"></div>
   </section>
 
   <main id="stationControls" class="station-layout {% if election.state != 'OPEN' %}hidden{% endif %}">

@@ -57,7 +57,7 @@ def verify_ballot_chain(ballots: list[Ballot], expected_head: str | None):
     # v1.5 uses independent random RDV slots + an order-independent set hash.
     if ballots and all(b.rdv_slot is not None for b in ballots):
         ok, root = _unordered_rdv_hash(ballots)
-        return ok and root == (expected_head or root), root
+        return ok and expected_head is not None and root == expected_head, root
     return _legacy_chain_hash(ballots, expected_head)
 
 
@@ -100,6 +100,12 @@ def verify_final_tally_integrity(db: Session) -> dict:
         raise DomainError("O registro de auditoria da apuração está ilegível.") from exc
     if int(event_details.get("total", -1)) != int(result.get("total", -2)) or event_details.get("ballot_head_hash") != result.get("ballot_head_hash"):
         raise DomainError("Os totais da apuração divergem do registro original de auditoria.")
+    # New tallies bind the entire result (including distribution per slate/urn),
+    # not merely the overall count. Legacy closed elections remain readable.
+    if event_details.get("result_hash"):
+        original = {key: value for key, value in result.items() if key != "audit_head_at_tally"}
+        if sha256_text(canonical_json(original)) != event_details["result_hash"]:
+            raise DomainError("A distribuição dos resultados foi alterada depois da apuração.")
     return result
 
 def tally_closed_election(db: Session, private_key_bytes: bytes, password: str, actor: str) -> dict:
@@ -107,7 +113,7 @@ def tally_closed_election(db: Session, private_key_bytes: bytes, password: str, 
     if election.state != ElectionState.CLOSED.value:
         raise DomainError("A apuração só é permitida depois do encerramento.")
     if election.final_tally_json:
-        return json.loads(election.final_tally_json)
+        return verify_final_tally_integrity(db)
 
     verify_sealed_integrity(db)
     audit_ok, _audit_before = verify_audit_chain(db)
@@ -176,7 +182,10 @@ def tally_closed_election(db: Session, private_key_bytes: bytes, password: str, 
         "zero_snapshot_hash": election.zero_snapshot_hash,
     }
 
-    event = append_audit(db, "FINAL_TALLY_CREATED", actor, {"total": len(ballots), "ballot_head_hash": final_head})
+    event = append_audit(db, "FINAL_TALLY_CREATED", actor, {
+        "total": len(ballots), "ballot_head_hash": final_head,
+        "result_hash": sha256_text(canonical_json(result)),
+    })
     result["audit_head_at_tally"] = event.entry_hash
     election.final_tally_json = json.dumps(result, ensure_ascii=False, sort_keys=True)
     return result

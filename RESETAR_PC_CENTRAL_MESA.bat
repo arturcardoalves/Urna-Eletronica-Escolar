@@ -1,118 +1,118 @@
 @echo off
-setlocal EnableExtensions
-chcp 65001 >nul
-title Urna Escolar - Reset da Central e Mesa
-
-net session >nul 2>&1
-if not "%errorlevel%"=="0" (
-    echo Solicitando permissao de administrador...
-    powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
-    exit /b
-)
-
-echo.
-echo ============================================================
-echo   RESET COMPLETO - PC CENTRAL + MESA ELEITORAL
-echo ============================================================
-echo.
-
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "try { $role=(Get-Content -LiteralPath (Join-Path $env:ProgramData 'UrnaEscolar\role.json') -Raw | ConvertFrom-Json).role; if ($role -ne 'central') { exit 3 } } catch { exit 4 }"
-if "%errorlevel%"=="3" (
-    echo ERRO: Este computador esta instalado como URNA.
-    echo Use o arquivo RESETAR_PC_URNA.bat neste computador.
-    echo.
-    pause
-    exit /b 1
-)
-if not "%errorlevel%"=="0" (
-    echo ERRO: Nao foi possivel confirmar que este e o PC Central.
-    echo Reinstale o sistema escolhendo CENTRAL + MESA e tente novamente.
-    echo.
-    pause
-    exit /b 1
-)
-
-for %%P in (UrnaEscolar.exe UrnaEscolarServidor.exe msedge.exe) do (
-    tasklist /FI "IMAGENAME eq %%P" 2>nul | find /I "%%P" >nul
-    if not errorlevel 1 (
-        echo ERRO: O programa %%P ainda esta aberto.
-        echo Feche a Central, o Servidor e todas as janelas do Microsoft Edge.
-        echo Depois execute este arquivo novamente.
-        echo.
-        pause
-        exit /b 1
-    )
-)
-
-echo ATENCAO: esta operacao e irreversivel.
-echo.
-echo Serao apagados deste computador:
-echo   - eleicao atual, votos, eleitores, chapas e apuracao;
-echo   - eleicoes arquivadas;
-echo   - usuarios ADMIN e MESARIO e todas as senhas;
-echo   - chaves, certificados e vinculos das urnas;
-echo   - configuracao da impressora, margem de corte e sessoes locais;
-echo   - logs antigos.
-echo.
-echo O programa instalado e o papel CENTRAL serao preservados.
-echo.
-set "CONFIRMACAO="
-set /p "CONFIRMACAO=Para apagar tudo, digite exatamente RESETAR CENTRAL: "
-if /I not "%CONFIRMACAO%"=="RESETAR CENTRAL" (
-    echo.
-    echo Operacao cancelada. Nenhum dado foi apagado.
-    pause
-    exit /b 0
-)
-
-echo.
-echo Limpando os dados da Central...
-
-powershell.exe -NoProfile -ExecutionPolicy Bypass -Command ^
- "$ErrorActionPreference='Stop';" ^
- "$localBase=[IO.Path]::GetFullPath($env:LOCALAPPDATA);" ^
- "$local=[IO.Path]::GetFullPath((Join-Path $localBase 'UrnaEscolar'));" ^
- "$programBase=[IO.Path]::GetFullPath($env:ProgramData);" ^
- "$machine=[IO.Path]::GetFullPath((Join-Path $programBase 'UrnaEscolar'));" ^
- "$server=[IO.Path]::GetFullPath((Join-Path $machine 'Servidor'));" ^
- "$logs=[IO.Path]::GetFullPath((Join-Path $machine 'logs'));" ^
- "$legacy=[IO.Path]::GetFullPath((Join-Path $machine 'device_setup.json'));" ^
- "if ((Split-Path -Parent $local) -ne $localBase) { throw 'Caminho local invalido.' };" ^
- "if ((Split-Path -Parent $machine) -ne $programBase) { throw 'Caminho principal invalido.' };" ^
- "if ((Split-Path -Parent $server) -ne $machine) { throw 'Caminho do servidor invalido.' };" ^
- "$roleFile=Join-Path $machine 'role.json';" ^
- "if (-not (Test-Path -LiteralPath $roleFile)) { throw 'role.json nao encontrado.' };" ^
- "$role=(Get-Content -LiteralPath $roleFile -Raw | ConvertFrom-Json).role;" ^
- "if ($role -ne 'central') { throw 'Este computador nao esta configurado como Central.' };" ^
- "$certPath=Join-Path $local 'central.crt';" ^
- "if (Test-Path -LiteralPath $certPath) {" ^
- "  $cert=[Security.Cryptography.X509Certificates.X509Certificate2]::new($certPath);" ^
- "  $store=[Security.Cryptography.X509Certificates.X509Store]::new('Root','CurrentUser');" ^
- "  $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite);" ^
- "  try {" ^
- "    $matches=$store.Certificates.Find([Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,$cert.Thumbprint,$false);" ^
- "    foreach ($item in $matches) { $store.Remove($item) }" ^
- "  } finally { $store.Close() }" ^
- "};" ^
- "if (Test-Path -LiteralPath $server) { Remove-Item -LiteralPath $server -Recurse -Force };" ^
- "if (Test-Path -LiteralPath $logs) { Remove-Item -LiteralPath $logs -Recurse -Force };" ^
- "if (Test-Path -LiteralPath $legacy) { Remove-Item -LiteralPath $legacy -Force };" ^
- "if (Test-Path -LiteralPath $local) { Remove-Item -LiteralPath $local -Recurse -Force };"
-
-if errorlevel 1 (
-    echo.
-    echo FALHA: o reset nao foi concluido.
-    echo Confira a mensagem acima, feche os programas e tente novamente.
-    pause
-    exit /b 1
-)
-
-echo.
-echo ============================================================
-echo   RESET CONCLUIDO COM SUCESSO
-echo ============================================================
-echo Abra a Central. O sistema criara um banco e certificados novos.
-echo Depois crie novamente o ADMIN, o MESARIO e a eleicao.
+setlocal EnableExtensions DisableDelayedExpansion
+title Urna Escolar - Reset
+set "URNA_RESET_SCRIPT=%~f0"
+powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "$raw=Get-Content -LiteralPath $env:URNA_RESET_SCRIPT -Raw; & ([scriptblock]::Create(($raw -split '(?m)^# POWERSHELL_RESET\r?$',2)[1]))"
+set "RESET_RESULT=%ERRORLEVEL%"
 echo.
 pause
-exit /b 0
+exit /b %RESET_RESULT%
+# POWERSHELL_RESET
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+function Assert-PlainTree([string]$Path) {
+    $current = [IO.Path]::GetFullPath($Path)
+    while ($current) {
+        if (Test-Path -LiteralPath $current) {
+            if ((Get-Item -LiteralPath $current -Force).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                throw 'A pasta contem link/juncao. Revise o caminho antes de limpar.'
+            }
+        }
+        $current = Split-Path -Parent $current
+    }
+    if (Test-Path -LiteralPath $Path -PathType Container) {
+        $pending = New-Object 'System.Collections.Generic.Stack[string]'
+        $pending.Push($Path)
+        while ($pending.Count -gt 0) {
+            foreach ($item in Get-ChildItem -LiteralPath $pending.Pop() -Force) {
+                if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) {
+                    throw 'A pasta contem link/juncao. Revise o caminho antes de limpar.'
+                }
+                if ($item.PSIsContainer) { $pending.Push($item.FullName) }
+            }
+        }
+    }
+}
+
+function Reset-UrnaData([string]$LocalBase, [string]$ProgramBase, [string]$Role) {
+    if ($Role -notin @('central','urna')) { throw 'Papel invalido.' }
+    if (-not [IO.Path]::IsPathRooted($LocalBase) -or -not [IO.Path]::IsPathRooted($ProgramBase)) {
+        throw 'As pastas de dados devem ter caminhos absolutos.'
+    }
+    $localBasePath = [IO.Path]::GetFullPath($LocalBase).TrimEnd('\')
+    $programBasePath = [IO.Path]::GetFullPath($ProgramBase).TrimEnd('\')
+    $local = [IO.Path]::GetFullPath((Join-Path $localBasePath 'UrnaEscolar'))
+    $machine = [IO.Path]::GetFullPath((Join-Path $programBasePath 'UrnaEscolar'))
+    if ((Split-Path -Parent $local) -ne $localBasePath -or (Split-Path -Parent $machine) -ne $programBasePath) {
+        throw 'Destino fora da pasta autorizada.'
+    }
+    $targets = @($local, (Join-Path $machine 'logs'), (Join-Path $machine 'device_setup.json'))
+    if ($Role -eq 'central') {
+        $targets += (Join-Path $machine 'Servidor')
+        $targets += (Join-Path $machine 'Backups')
+    }
+    # Validate everything before touching certificates or deleting any item.
+    Assert-PlainTree $machine
+    foreach ($path in $targets) { Assert-PlainTree $path }
+    $roleFile = Join-Path $machine 'role.json'
+    $installedRole = (Get-Content -LiteralPath $roleFile -Raw | ConvertFrom-Json).role
+    if ($installedRole -ne $Role) {
+        throw 'Este BAT nao corresponde ao papel instalado. Use o BAT do outro computador.'
+    }
+    $certPath = Join-Path $local 'central.crt'
+    if (Test-Path -LiteralPath $certPath) {
+        $cert = New-Object Security.Cryptography.X509Certificates.X509Certificate2($certPath)
+        $store = New-Object Security.Cryptography.X509Certificates.X509Store('Root','CurrentUser')
+        $store.Open([Security.Cryptography.X509Certificates.OpenFlags]::ReadWrite)
+        try {
+            $matches = $store.Certificates.Find([Security.Cryptography.X509Certificates.X509FindType]::FindByThumbprint,$cert.Thumbprint,$false)
+            foreach ($item in $matches) { $store.Remove($item) }
+        } finally { $store.Close(); $cert.Dispose() }
+    }
+    foreach ($path in $targets) {
+        if (Test-Path -LiteralPath $path) {
+            Assert-PlainTree $path
+            Remove-Item -LiteralPath $path -Recurse -Force
+            Write-Host ('Removido: ' + $path)
+        }
+    }
+}
+
+# INTERACTIVE_RESET
+try {
+    $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($identity)
+    if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+        throw 'Clique com o botao direito no BAT > Executar como administrador, usando a mesma conta Windows da Urna.'
+    }
+    # Elevation using another account would select the wrong profile/cert store.
+    $sessionId = (Get-Process -Id $PID).SessionId
+    $explorers = @(Get-CimInstance Win32_Process -Filter "Name='explorer.exe'" | Where-Object { $_.SessionId -eq $sessionId })
+    if (-not $explorers.Count) { throw 'Abra este BAT na sessao Windows usada para executar a Urna.' }
+    foreach ($explorer in $explorers) {
+        $owner = Invoke-CimMethod -InputObject $explorer -MethodName GetOwnerSid
+        if ($owner.ReturnValue -ne 0 -or $owner.Sid -ne $identity.User.Value) {
+            throw 'A conta elevada e diferente da conta Windows em uso. Cancelado para preservar o perfil correto.'
+        }
+    }
+    $running = @(Get-Process -Name UrnaEscolar,UrnaEscolarServidor,msedge -ErrorAction SilentlyContinue)
+    if ($running.Count) { throw 'Feche a Central, a Urna e todas as janelas/processos do Microsoft Edge e tente novamente.' }
+    $role = 'central'
+    Write-Host ''
+    Write-Host 'RESET COMPLETO - PC CENTRAL + MESA' -ForegroundColor Yellow
+    Write-Host 'Esta operacao apaga dados permanentemente. Copie qualquer backup que deseja guardar para outra pasta.'
+    Write-Host 'Tambem serao apagados: usuarios/senhas, eleitores, chapas, votos, eleicoes arquivadas, chaves e backups de atualizacao.'
+    Write-Host 'Serao apagados: vinculos, certificado desta Central no usuario atual, impressora, margem, sessoes, diario de impressao e logs.'
+    Write-Host 'O programa instalado e o papel do computador serao preservados.'
+    Write-Host ('Conta Windows: ' + $identity.Name)
+    $answer = Read-Host 'Para continuar, digite RESETAR CENTRAL'
+    if ($answer -cne 'RESETAR CENTRAL') { Write-Host 'Cancelado. Nenhum dado foi apagado.'; exit 0 }
+    Reset-UrnaData ([Environment]::GetFolderPath('LocalApplicationData')) ([Environment]::GetFolderPath('CommonApplicationData')) $role
+    Write-Host 'RESET CONCLUIDO. Abra a Central, configure ADMIN e MESARIO e vincule novamente cada Urna.' -ForegroundColor Green
+    exit 0
+} catch {
+    Write-Host ('FALHA: ' + $_.Exception.Message) -ForegroundColor Red
+    Write-Host 'Se a remocao ja havia comecado, ela pode estar parcial. Corrija a causa e execute novamente.'
+    exit 1
+}

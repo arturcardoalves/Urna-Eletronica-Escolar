@@ -25,8 +25,11 @@ def ensure_internal_keypair() -> None:
     accidental disclosure but does not protect against an attacker who already
     has full administrative access to the server computer.
     """
-    if PUBLIC_KEY_PATH.exists() and PRIVATE_KEY_PATH.exists() and PRIVATE_KEY_PASSWORD_PATH.exists():
+    existing = [path.exists() for path in (PUBLIC_KEY_PATH, PRIVATE_KEY_PATH, PRIVATE_KEY_PASSWORD_PATH)]
+    if all(existing):
         return
+    if any(existing):
+        raise RuntimeError("O conjunto de chaves internas está incompleto. Restaure o backup antes de prosseguir; as chaves existentes foram preservadas.")
     PUBLIC_KEY_PATH.parent.mkdir(parents=True, exist_ok=True)
     password = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode('ascii').rstrip('=')
     generate_keypair(PUBLIC_KEY_PATH, PRIVATE_KEY_PATH, password)

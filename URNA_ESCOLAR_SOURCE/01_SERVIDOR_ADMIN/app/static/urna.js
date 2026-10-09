@@ -13,8 +13,13 @@ const selectionList = document.getElementById('selectionList');
 const selectionReview = document.getElementById('selectionReview');
 const reviewContent = document.getElementById('reviewContent');
 const numericNotice = document.getElementById('numericNotice');
+const selectionNotice = document.getElementById('selectionNotice');
 
 let deviceAuthenticated = false;
+let integrityReady = false;
+let authorizationRunning = false;
+let printCommandRunning = false;
+let reprintRunning = false;
 let managedPrint = false;
 let sendingVote = false;
 let connectionReady = true;
@@ -169,6 +174,7 @@ async function syncDeviceConfig() {
 }
 
 async function runIntegrityCheck() {
+  integrityReady = false;
   show(bootCheck);
   if (bootChecks) bootChecks.innerHTML = '<div class="boot-check pending"><span>…</span><b>Iniciando verificação</b></div>';
   try {
@@ -183,6 +189,7 @@ async function runIntegrityCheck() {
       show(integrityBlocked);
       return false;
     }
+    integrityReady = true;
     return true;
   } catch (e) {
     const reason=document.getElementById('integrityBlockedReason'); if(reason) reason.textContent=e.message || 'Falha ao verificar a integridade.';
@@ -256,6 +263,7 @@ document.getElementById('openDeviceSettingsClosed')?.addEventListener('click', o
 
 document.getElementById('cancelDeviceSettings')?.addEventListener('click', () => {
   editingDevice = false;
+  if (deviceAuthenticated && !integrityReady) { initialize(); return; }
   if (deviceAuthenticated && electionState === 'CLOSED') show(closed); else if (deviceAuthenticated && anonymousMode && electionState === 'OPEN') { resetChoice(); show(ballot); } else if (deviceAuthenticated) show(waiting); else show(setup);
 });
 
@@ -269,6 +277,7 @@ document.getElementById('saveSecret')?.addEventListener('click', async () => {
     const login = await fetch(`/api/urna/${urnCode}/login`, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({device_secret:typed})});
     if (!login.ok) { const d=await login.json().catch(()=>({})); throw new Error(d.detail || 'Senha da urna inválida'); }
     deviceAuthenticated = true;
+    secretInput.value = '';
     const r = await fetch(`/api/urna/${urnCode}/printer-config`, {method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({printer_name:printerName,agent_url:agentUrl,printer_mode:printerMode})});
     if (!r.ok) { const d=await r.json().catch(()=>({})); throw new Error(d.detail || 'Não foi possível salvar'); }
     localStorage.setItem('urnaAgentUrl:' + urnCode, agentUrl);
@@ -276,23 +285,24 @@ document.getElementById('saveSecret')?.addEventListener('click', async () => {
     localStorage.setItem('urnaPrinterMode:' + urnCode, printerMode);
     agentStatus.textContent='Configuração salva'; agentStatus.className='agent-status ok';
     editingDevice = false;
-    await syncDeviceConfig();
-    if (electionState === 'CLOSED') show(closed); else if (anonymousMode && electionState === 'OPEN') { resetChoice(); show(ballot); } else show(waiting);
-    poll();
+    await initialize();
   } catch (e) {
     agentStatus.textContent = e.message || 'Senha ou configuração inválida'; agentStatus.className='agent-status error';
   }
 });
 
 async function poll() {
-  if (!deviceAuthenticated || currentToken || pendingRecovery || sendingVote || !connectionReady || Date.now() < doneUntil) return;
+  if (!deviceAuthenticated || !integrityReady || authorizationRunning || editingDevice || startingAnonymous || currentToken || pendingRecovery || sendingVote || !connectionReady || Date.now() < doneUntil) return;
+  authorizationRunning = true;
   try {
-    const r = await fetch(`/api/urna/${urnCode}/authorization`);
+    const r = await fetch(`/api/urna/${urnCode}/authorization`, {cache:'no-store', signal:AbortSignal.timeout(5000)});
     if (r.status === 401) {
-      deviceAuthenticated = false; show(setup); return;
+      deviceAuthenticated = false; integrityReady = false; show(setup); return;
     }
     if (!r.ok) return;
     const d = await r.json();
+    // A resposta pode chegar depois do primeiro toque ou da abertura dos ajustes.
+    if (!integrityReady || editingDevice || startingAnonymous || currentToken || pendingRecovery || sendingVote || Date.now() < doneUntil) return;
     electionState = d.election_state || electionState;
     applyOperationalConfig(d);
     if (electionState === 'CLOSED') { show(closed); return; }
@@ -312,11 +322,12 @@ async function poll() {
     } else {
       show(waiting);
     }
-  } catch (_) {}
+  } catch (_) {} finally { authorizationRunning = false; }
 }
 
 async function pollReprint() {
-  if (!deviceAuthenticated || managedPrint) return;
+  if (!deviceAuthenticated || managedPrint || reprintRunning || printCommandRunning) return;
+  reprintRunning = true;
   try {
     const r = await fetch(`/api/urna/${urnCode}/reprint`);
     if (!r.ok) return;
@@ -326,11 +337,12 @@ async function pollReprint() {
       try { const rr = await fetch(agentUrl + '/reprint-last', {method:'POST'}); success = rr.ok; } catch (_) {}
       await fetch(`/api/urna/${urnCode}/reprint-complete`, {method:'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body:new URLSearchParams({success:success?'true':'false'})});
     }
-  } catch (_) {}
+  } catch (_) {} finally { reprintRunning = false; }
 }
 
 async function pollPrintCommand() {
-  if (!deviceAuthenticated || managedPrint) return;
+  if (!deviceAuthenticated || managedPrint || printCommandRunning || reprintRunning) return;
+  printCommandRunning = true;
   try {
     if (!printerName) await syncDeviceConfig();
     if (!printerName) return;
@@ -342,7 +354,7 @@ async function pollPrintCommand() {
     let success=false;
     try { const pr = await fetch(agentUrl + '/print', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}); success=pr.ok; } catch (_) {}
     await fetch(`/api/urna/${urnCode}/print-command/${d.id}/complete`, {method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({success:success?'true':'false'})});
-  } catch (_) {}
+  } catch (_) {} finally { printCommandRunning = false; }
 }
 
 setInterval(poll, 700);
@@ -357,11 +369,14 @@ function resetChoice() {
   const preview = document.getElementById('candidatePreview');
   if (preview) preview.innerHTML = '<div class="candidate-empty"><b>AGUARDANDO DIGITAÇÃO</b><span>Digite os dois números da chapa.</span></div>';
   numericNotice?.classList.remove('show');
+  selectionNotice?.classList.remove('show');
+  if (reviewContent) reviewContent.textContent = '';
   selectionReview?.classList.add('hidden');
   selectionList?.classList.remove('hidden');
 }
 
 async function ensureAnonymousSession() {
+  if (!integrityReady || !connectionReady) return false;
   if (!anonymousMode) return Boolean(currentToken);
   if (currentToken) return true;
   if (startingAnonymous || electionState !== 'OPEN') return false;
@@ -376,6 +391,9 @@ async function ensureAnonymousSession() {
     const d = await r.json();
     currentToken = d.token;
     return Boolean(currentToken);
+  } catch (_) {
+    showInlineError('Conexão interrompida. Aguarde a Central e tente novamente.');
+    return false;
   } finally {
     startingAnonymous = false;
   }
@@ -387,6 +405,7 @@ function finishRecordedVote(data) {
   sendingVote = false;
   connectionMessage('');
   currentToken = null;
+  resetChoice();
   finalTone();
   doneUntil = Date.now() + 5000;
   show(done);
@@ -399,7 +418,7 @@ function finishRecordedVote(data) {
 }
 
 async function submitVote(type, number = null) {
-  if (sendingVote || pendingRecovery || !connectionReady) return;
+  if (!integrityReady || sendingVote || pendingRecovery || !connectionReady) return;
   if (anonymousMode && !currentToken && !(await ensureAnonymousSession())) return;
   if (!currentToken) return;
   sendingVote = true;
@@ -410,8 +429,9 @@ async function submitVote(type, number = null) {
     const r = await fetch(`/api/urna/${urnCode}/vote`, {method:'POST', body, signal:AbortSignal.timeout(10000)});
     const data = await r.json();
     if (!r.ok) {
-      // Resolve through the receipt even after a 5xx or an interrupted response.
-      if (managedPrint) throw new Error(data.detail || 'Confirmação pendente');
+      // Erros de domínio não gravaram voto; só respostas incertas exigem recibo.
+      if (managedPrint && r.status >= 500) throw new Error(data.detail || 'Confirmação pendente');
+      sessionStorage.removeItem('urnaPending:' + urnCode);
       showInlineError(data.detail || 'Não foi possível registrar o voto.'); return;
     }
     finishRecordedVote(data);
@@ -453,7 +473,10 @@ async function checkNativeConnection() {
 }
 setInterval(checkNativeConnection, 2000);
 
-function showInlineError(message) { if (numericNotice) { numericNotice.textContent = message; numericNotice.classList.add('show'); } }
+function showInlineError(message) {
+  const notice = votingMode === 'SELECTION' ? selectionNotice : numericNotice;
+  if (notice) { notice.textContent = message; notice.classList.add('show'); }
+}
 
 async function directPrintVote(p, ballotId) {
   if (!printerName) await syncDeviceConfig();
@@ -488,6 +511,7 @@ function esc(v) { return String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;',
 function selectForReview(number) {
   selected = number;
   const d = window.SLATE_DETAILS[String(number)]; if (!d) return;
+  selectionNotice?.classList.remove('show');
   let members = '';
   if (d.members?.length) members = `<div class="review-members">${d.members.map(m => `<div><b>${esc(m.role)}</b><span>${esc(m.name)}</span></div>`).join('')}</div>`;
   reviewContent.innerHTML = `<div class="review-choice"><div class="review-photo-slot">${d.logo ? `<img src="${esc(d.logo)}" alt="Logo da chapa">` : `<span>FOTO</span>`}</div><div class="review-choice-text"><span class="review-number">${String(d.number).padStart(2,'0')}</span><h2>${esc(d.name)}</h2>${members}</div></div>`;
@@ -495,6 +519,7 @@ function selectForReview(number) {
 }
 
 function selectBlankForReview() {
+  selectionNotice?.classList.remove('show');
   selected = 'blank';
   reviewContent.innerHTML = `<div class="review-blank"><span>VOTO EM</span><h2>BRANCO</h2><p>Confira e pressione CONFIRMAR.</p></div>`;
   selectionList.classList.add('hidden'); selectionReview.classList.remove('hidden');

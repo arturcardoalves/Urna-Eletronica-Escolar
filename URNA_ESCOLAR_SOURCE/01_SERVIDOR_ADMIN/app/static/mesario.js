@@ -21,6 +21,13 @@ let searchTimer=null;
 let selectedVoter=null;
 let selectedUrnCode=null;
 let activePaperAlert=null;
+let authorizingVoter=false;
+let voterAuthorizationError='';
+let closingElection=false;
+let stationConnected=false;
+let statusRunning=false;
+let searchRequest=0;
+let listRequest=0;
 window.URN_STATE={};
 
 function esc(v){return String(v??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
@@ -68,9 +75,10 @@ function bindVoterCards(scope=document){scope.querySelectorAll('.voter-list-card
 async function doSearch(){
   if(!identificationEnabled||!hasSearchMode||electionState!=='OPEN'||!search||!results)return;
   const q=search.value.trim();
+  const request=++searchRequest;
   if(!q){results.innerHTML='<div class="idle-message compact"><span>Resultado da pesquisa</span><small>Digite uma matrícula ou parte do nome.</small></div>';return;}
   results.innerHTML='<div class="loading-state">Procurando…</div>';
-  try{const r=await fetch('/api/voters/search?q='+encodeURIComponent(q),{cache:'no-store'});const d=await r.json().catch(()=>[]);if(!r.ok)throw new Error(d.detail||'Não foi possível pesquisar.');results.innerHTML=d.length?`<div class="search-result-grid">${d.slice(0,4).map(v=>voterCard(v,true)).join('')}</div>`:'<div class="not-found-state"><b>ELEITOR NÃO ENCONTRADO</b><span>Confira a matrícula ou pesquise pelo nome.</span></div>';bindVoterCards(results);}catch(err){results.innerHTML=`<div class="error-state">${esc(err.message)}</div>`;}
+  try{const r=await fetch('/api/voters/search?q='+encodeURIComponent(q),{cache:'no-store',signal:AbortSignal.timeout(5000)});const d=await r.json().catch(()=>[]);if(request!==searchRequest||search.value.trim()!==q)return;if(!r.ok)throw new Error(d.detail||'Não foi possível pesquisar.');results.innerHTML=d.length?`<div class="search-result-grid">${d.slice(0,4).map(v=>voterCard(v,true)).join('')}</div>`:'<div class="not-found-state"><b>ELEITOR NÃO ENCONTRADO</b><span>Confira a matrícula ou pesquise pelo nome.</span></div>';bindVoterCards(results);}catch(err){if(request===searchRequest)results.innerHTML=`<div class="error-state">${esc(err.message)}</div>`;}
 }
 searchBtn?.addEventListener('click',doSearch);
 search?.addEventListener('input',()=>{clearTimeout(searchTimer);searchTimer=setTimeout(doSearch,180)});
@@ -78,7 +86,8 @@ search?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();do
 
 async function loadVoterList(){
   if(!identificationEnabled||!hasListMode||!voterList||electionState!=='OPEN')return;
-  try{const r=await fetch('/api/voters/list?class_code='+encodeURIComponent(currentClass),{cache:'no-store'});const d=await r.json();if(!r.ok)throw new Error(d.detail||'Falha ao carregar lista.');visibleVoterCount.textContent=`${d.length} aluno(s)`;voterList.innerHTML=d.length?d.map(v=>voterCard(v,false)).join(''):'<div class="empty-list-state">Nenhum aluno nesta turma.</div>';bindVoterCards(voterList);}catch(err){voterList.innerHTML=`<div class="error-state">${esc(err.message)}</div>`;}
+  const request=++listRequest,requestedClass=currentClass;
+  try{const r=await fetch('/api/voters/list?class_code='+encodeURIComponent(requestedClass),{cache:'no-store',signal:AbortSignal.timeout(5000)});const d=await r.json();if(request!==listRequest||requestedClass!==currentClass)return;if(!r.ok)throw new Error(d.detail||'Falha ao carregar lista.');visibleVoterCount.textContent=`${d.length} aluno(s)`;voterList.innerHTML=d.length?d.map(v=>voterCard(v,false)).join(''):'<div class="empty-list-state">Nenhum aluno nesta turma.</div>';bindVoterCards(voterList);}catch(err){if(request===listRequest)voterList.innerHTML=`<div class="error-state">${esc(err.message)}</div>`;}
 }
 document.querySelectorAll('.class-filter').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.class-filter').forEach(x=>x.classList.remove('active'));btn.classList.add('active');currentClass=btn.dataset.class||'ALL';loadVoterList();}));
 
@@ -93,11 +102,19 @@ function renderPendingVoterConfirmation(){
   const status=document.getElementById('confirmVoterStatus');
   if(!box||!btn||!status)return;
 
+  if(authorizingVoter){btn.disabled=true;return;}
+  if(!stationConnected||voterAuthorizationError){
+    btn.disabled=true;
+    status.className='station-operation-status bad';
+    status.textContent=voterAuthorizationError||'Sem conexão com a Central. Aguarde a atualização das urnas.';
+    return;
+  }
+
   if(selectedVoter.status==='IN_PROGRESS'){
     selectedUrnCode=null;
     box.innerHTML='';
     box.classList.add('hidden');
-    status.textContent='Aguardando urna livre…';
+    status.textContent='Este eleitor já está em votação. Feche esta janela e confira a urna indicada na lista.';
     status.className='station-operation-status waiting';
     btn.disabled=true;
     return;
@@ -142,7 +159,8 @@ function renderPendingVoterConfirmation(){
 }
 
 function openVoterConfirmation(v){
-  if(!v||v.status==='VOTED')return;
+  if(!v||v.status==='VOTED'||authorizingVoter)return;
+  voterAuthorizationError='';
   selectedVoter=v;
   selectedUrnCode=null;
   document.getElementById('confirmVoterName').textContent=v.name;
@@ -152,8 +170,20 @@ function openVoterConfirmation(v){
 }
 
 document.getElementById('confirmVoterBtn')?.addEventListener('click',async()=>{
-  const btn=document.getElementById('confirmVoterBtn'),status=document.getElementById('confirmVoterStatus');if(!selectedVoter||!selectedUrnCode)return;btn.disabled=true;status.textContent='Liberando urna…';
-  try{const r=await fetch('/api/mesario/authorize',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({enrollment:selectedVoter.enrollment,urn_code:selectedUrnCode})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Não foi possível liberar.');hideModal('voterConfirmModal');if(search)search.value='';if(results)results.innerHTML='<div class="released-state compact-release"><div class="released-icon">✓</div><div><h2>URNA LIBERADA</h2><p>'+esc(selectedVoter.name)+' pode se dirigir à '+esc(selectedUrnCode)+'.</p></div></div>';selectedVoter=null;selectedUrnCode=null;await refreshStatus();await loadVoterList();setTimeout(()=>{if(results)results.innerHTML='<div class="idle-message compact"><span>Resultado da pesquisa</span><small>Digite uma matrícula ou parte do nome.</small></div>';},1800);}catch(err){status.className='station-operation-status bad';status.textContent=err.message;btn.disabled=true;await refreshStatus();renderPendingVoterConfirmation();}
+  const btn=document.getElementById('confirmVoterBtn'),status=document.getElementById('confirmVoterStatus');if(!selectedVoter||!selectedUrnCode||authorizingVoter||!stationConnected)return;
+  const voter=selectedVoter,urn=selectedUrnCode;
+  authorizingVoter=true;btn.disabled=true;status.textContent='Liberando urna…';
+  try{
+    const r=await fetch('/api/mesario/authorize',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({enrollment:voter.enrollment,urn_code:urn}),signal:AbortSignal.timeout(10000)});
+    const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Não foi possível liberar.');
+    hideModal('voterConfirmModal');searchRequest++;if(search)search.value='';
+    if(results)results.innerHTML='<div class="released-state compact-release"><div class="released-icon">✓</div><div><h2>URNA LIBERADA</h2><p>'+esc(voter.name)+' pode se dirigir à '+esc(urn)+'.</p></div></div>';
+    selectedVoter=null;selectedUrnCode=null;await refreshStatus();await loadVoterList();
+    setTimeout(()=>{if(results&&!search?.value.trim()&&results.querySelector('.released-state'))results.innerHTML='<div class="idle-message compact"><span>Resultado da pesquisa</span><small>Digite uma matrícula ou parte do nome.</small></div>';},1800);
+  }catch(err){
+    voterAuthorizationError=(err.name==='TimeoutError'||err instanceof TypeError)?'Resposta interrompida. Feche esta janela e confira o estado do eleitor antes de liberar novamente.':err.message;
+    await refreshStatus();await loadVoterList();
+  }finally{authorizingVoter=false;renderPendingVoterConfirmation();}
 });
 
 function setOpeningCheck(id,state,text){const el=document.getElementById(id);if(!el)return;el.className='opening-check '+state;el.querySelector('span').textContent=state==='ok'?'✓':state==='bad'?'×':'…';el.querySelector('small').textContent=text;}
@@ -166,7 +196,31 @@ document.getElementById('openElectionForm')?.addEventListener('submit',async e=>
 document.getElementById('commitOpeningBtn')?.addEventListener('click',async()=>{if(!openingTicket)return;const btn=document.getElementById('commitOpeningBtn'),status=document.getElementById('openElectionStatus');btn.disabled=true;btn.textContent='INICIANDO…';try{const r=await fetch('/api/mesario/open/commit',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({ticket:openingTicket})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||'Não foi possível abrir a votação.');status.className='station-operation-status ok';status.textContent='VOTAÇÃO ABERTA COM SUCESSO.';setTimeout(()=>{hideModal('openElectionModal');applyState('OPEN');refreshStatus();if(identificationEnabled&&hasListMode)loadVoterList();},600);}catch(err){status.className='station-operation-status bad';status.textContent=err.message;btn.disabled=false;btn.textContent='INICIAR VOTAÇÃO';}});
 
 document.getElementById('closeElectionBtn')?.addEventListener('click',()=>{const s=document.getElementById('closeElectionStatus');if(s){s.textContent='';s.className='station-operation-status';}showModal('closeElectionModal');setTimeout(()=>document.getElementById('closeUserPassword')?.focus(),60)});
-async function submitCloseElection(){const form=document.getElementById('closeElectionForm'),btn=document.getElementById('closeSubmitBtn'),status=document.getElementById('closeElectionStatus');if(!form||!btn||!status)return;const pwd=document.getElementById('closeUserPassword')?.value||'',confirmed=form.querySelector('input[name="confirm_close"]')?.checked;if(!pwd){status.className='station-operation-status bad';status.textContent='Digite a senha do Mesário.';return;}if(!confirmed){status.className='station-operation-status bad';status.textContent='Marque a confirmação de encerramento.';return;}btn.disabled=true;btn.textContent='ENCERRANDO…';status.className='station-operation-status';status.textContent='Encerrando e apurando com a chave interna…';try{const r=await fetch('/api/mesario/close',{method:'POST',body:new FormData(form),credentials:'same-origin',cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||`Falha no encerramento (HTTP ${r.status}).`);applyState('CLOSED');status.textContent='Votação encerrada. Aguardando impressão do boletim final…';await waitCloseReady(d.ticket,status);status.className='station-operation-status ok';status.textContent='ENCERRAMENTO CONCLUÍDO. Boletim final impresso.';const box=document.getElementById('closedPrintStatus');if(box){box.textContent='Boletim final impresso com sucesso.';box.className='station-operation-status ok';}form.reset();setTimeout(()=>{hideModal('closeElectionModal');refreshStatus();},900);}catch(err){status.className='station-operation-status bad';status.textContent=err.message||'Não foi possível encerrar.';}finally{btn.disabled=false;btn.textContent='ENCERRAR E APURAR';}}
+async function submitCloseElection(){
+  const form=document.getElementById('closeElectionForm'),btn=document.getElementById('closeSubmitBtn'),status=document.getElementById('closeElectionStatus');
+  if(!form||!btn||!status||closingElection)return;
+  const pwd=document.getElementById('closeUserPassword')?.value||'',confirmed=form.querySelector('input[name="confirm_close"]')?.checked;
+  if(!pwd){status.className='station-operation-status bad';status.textContent='Digite a senha do Mesário.';return;}
+  if(!confirmed){status.className='station-operation-status bad';status.textContent='Marque a confirmação de encerramento.';return;}
+  closingElection=true;btn.disabled=true;btn.textContent='ENCERRANDO…';status.className='station-operation-status';status.textContent='Encerrando e apurando com a chave interna…';
+  const closedStatus=document.getElementById('closedPrintStatus');
+  try{
+    const r=await fetch('/api/mesario/close',{method:'POST',body:new FormData(form),credentials:'same-origin',cache:'no-store'});
+    const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||`Falha no encerramento (HTTP ${r.status}).`);
+    applyState('CLOSED');form.reset();
+    // A tela de encerramento continua visível enquanto a impressão é verificada.
+    const progress=closedStatus||status;
+    progress.className='station-operation-status';progress.textContent='Votação encerrada. Aguardando impressão do boletim final…';
+    const result=await waitCloseReady(d.ticket,progress);
+    progress.className='station-operation-status ok';
+    progress.textContent=result.total?'ENCERRAMENTO CONCLUÍDO. Boletim final impresso.':'ENCERRAMENTO CONCLUÍDO. Consulte o boletim final acima.';
+    await refreshStatus();
+  }catch(err){
+    const progress=electionState==='CLOSED'&&closedStatus?closedStatus:status;
+    progress.className='station-operation-status bad';
+    progress.textContent=(electionState==='CLOSED'?'A votação permanece encerrada. ':'')+(err.message||'Não foi possível confirmar o encerramento.')+(electionState==='CLOSED'?' Confira a impressora e solicite a reimpressão no Administrador.':'');
+  }finally{closingElection=false;btn.disabled=false;btn.textContent='ENCERRAR E APURAR';}
+}
 document.getElementById('closeSubmitBtn')?.addEventListener('click',e=>{e.preventDefault();submitCloseElection()});
 document.getElementById('closeElectionForm')?.addEventListener('submit',e=>{e.preventDefault();submitCloseElection()});
 
@@ -174,8 +228,19 @@ function renderPaperAlert(paper){const box=document.getElementById('paperChangeA
 document.getElementById('paperChangeConfirm')?.addEventListener('click',async()=>{if(!activePaperAlert)return;const r=await fetch('/api/mesario/paper-change/confirm',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({urn_code:activePaperAlert.urn_code})});if(r.ok)refreshStatus();});
 
 async function refreshStatus(){
-  try{const r=await fetch('/api/mesario/status',{cache:'no-store'});if(!r.ok)return;const d=await r.json();applyState(d.state);renderPreflight(d.preflight);renderUrns(d.urns||[]);renderPaperAlert(d.paper_change);const es=document.getElementById('electionState');if(es)es.textContent=d.state;const voted=document.getElementById('countVoted');if(voted)voted.textContent=d.voted??0;if(identificationEnabled){const total=document.getElementById('countTotal'),remaining=document.getElementById('countRemaining');if(total)total.textContent=d.total??0;if(remaining)remaining.textContent=d.remaining??0;}if(identificationEnabled&&hasListMode&&electionState==='OPEN'){clearTimeout(listRefreshTimer);listRefreshTimer=setTimeout(loadVoterList,120);}renderPendingVoterConfirmation(); }
-  catch(_){}
+  if(statusRunning)return;
+  statusRunning=true;
+  const connectionStatus=document.getElementById('stationConnectionStatus');
+  try{
+    const r=await fetch('/api/mesario/status',{cache:'no-store',signal:AbortSignal.timeout(5000)});
+    if(!r.ok)throw new Error([401,403].includes(r.status)?'Sessão encerrada. Abra novamente a Mesa Eleitoral pela Central e entre com sua senha.':'Não foi possível atualizar a Mesa. Aguarde a conexão com a Central.');
+    const d=await r.json();stationConnected=true;connectionStatus?.classList.add('hidden');
+    applyState(d.state);renderPreflight(d.preflight);renderUrns(d.urns||[]);renderPaperAlert(d.paper_change);const es=document.getElementById('electionState');if(es)es.textContent=d.state;const voted=document.getElementById('countVoted');if(voted)voted.textContent=d.voted??0;if(identificationEnabled){const total=document.getElementById('countTotal'),remaining=document.getElementById('countRemaining');if(total)total.textContent=d.total??0;if(remaining)remaining.textContent=d.remaining??0;}if(identificationEnabled&&hasListMode&&electionState==='OPEN'){clearTimeout(listRefreshTimer);listRefreshTimer=setTimeout(loadVoterList,120);}
+  }catch(err){
+    stationConnected=false;window.URN_STATE={};
+    if(connectionStatus){connectionStatus.textContent=(err.name==='TimeoutError'||err instanceof TypeError)?'Central desconectada. Confira o aplicativo e os cabos de rede; aguarde a atualização antes de liberar outro eleitor.':err.message;connectionStatus.classList.remove('hidden');}
+    renderUrns((window.URN_CODES||[]).map(code=>({code,status:'OFFLINE'})));
+  }finally{statusRunning=false;renderPendingVoterConfirmation();}
 }
 
 setInterval(refreshStatus,1200);refreshStatus();applyState(electionState);if(identificationEnabled&&hasListMode&&electionState==='OPEN')loadVoterList();

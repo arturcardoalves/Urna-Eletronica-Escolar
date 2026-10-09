@@ -11,7 +11,6 @@ if not (srv / 'app' / 'main.py').exists():
 datas = [
     (str(srv / 'app' / 'templates'), 'app/templates'),
     (str(srv / 'app' / 'static'), 'app/static'),
-    (str(srv / 'data'), 'data'),
 ]
 binaries = []
 hiddenimports = ['app.main', 'scripts.generate_tls']

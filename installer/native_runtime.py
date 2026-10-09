@@ -2,13 +2,11 @@ from __future__ import annotations
 
 import hashlib
 from contextlib import contextmanager
-import http.cookiejar
 import json
 import os
 import sqlite3
 import ssl
 import subprocess
-import sys
 import threading
 import tempfile
 import urllib.error
@@ -105,7 +103,8 @@ def atomic_json(path, data):
 
 def read_config():
     try:
-        return json.loads((APP_HOME / "desktop.json").read_text("utf-8"))
+        config = json.loads((APP_HOME / "desktop.json").read_text("utf-8"))
+        return config if isinstance(config, dict) else {}
     except (OSError, ValueError):
         return {}
 
@@ -179,16 +178,9 @@ def renderer():
 
 
 def font_ready():
-    regular = bold = False
-    dirs = [Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts", Path(os.environ.get("LOCALAPPDATA", "")) / "Microsoft/Windows/Fonts"]
-    for directory in dirs:
-        if directory.exists():
-            for font in directory.iterdir():
-                name = font.name.lower().replace("-", "").replace("_", "")
-                if "atkinsonhyperlegible" in name:
-                    regular |= "regular" in name
-                    bold |= "bold" in name
-    return regular and bold
+    # Exactly the same check as the renderer; a similarly named font must not
+    # make the desktop report ready only to fail when printing the first vote.
+    return renderer()._atkinson_installed()
 
 
 def list_printers():

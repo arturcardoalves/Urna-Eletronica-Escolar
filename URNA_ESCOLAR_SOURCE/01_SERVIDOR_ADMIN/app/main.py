@@ -6,6 +6,8 @@ import shutil
 import sqlite3
 import socket
 import hashlib
+import re
+import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -14,6 +16,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from openpyxl import load_workbook
+from PIL import Image, UnidentifiedImageError
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -35,7 +38,7 @@ from .services import (
     append_voter_amendment,
 )
 
-app = FastAPI(title="Urna Escolar", version=APP_VERSION)
+app = FastAPI(title="Urna Escolar", version=APP_VERSION, docs_url=None, redoc_url=None, openapi_url=None)
 USER_STATIC_DIR = DATA_DIR / "user_static"
 USER_STATIC_DIR.mkdir(parents=True, exist_ok=True)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "app" / "static"), name="static")
@@ -64,7 +67,7 @@ async def security_headers(request: Request, call_next):
         if origin:
             from urllib.parse import urlparse
             parsed = urlparse(origin)
-            if parsed.netloc and parsed.netloc != request.url.netloc:
+            if parsed.scheme != request.url.scheme or parsed.netloc != request.url.netloc:
                 return JSONResponse({"detail": "Origem da requisição não permitida."}, status_code=403)
     response = await call_next(request)
     response.headers["X-Content-Type-Options"] = "nosniff"
@@ -177,19 +180,28 @@ def root(request: Request):
     return templates.TemplateResponse(request=request, name="home.html", context={"version": APP_VERSION})
 
 
+def _require_local_setup(request: Request) -> None:
+    if not request.client or request.client.host not in {"127.0.0.1", "::1", "testclient"}:
+        raise HTTPException(403, "Crie o primeiro administrador no computador da Central, usando o endereço local.")
+
+
 @app.get("/setup", response_class=HTMLResponse)
 def setup_page(request: Request, db: Session = Depends(get_db)):
+    _require_local_setup(request)
     exists = db.execute(select(User).limit(1)).scalar_one_or_none() is not None
     return templates.TemplateResponse(request=request, name="setup.html", context={"exists": exists})
 
 
 @app.post("/setup")
-def setup_admin(username: str = Form(...), display_name: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+def setup_admin(request: Request, username: str = Form(...), display_name: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    _require_local_setup(request)
     if db.execute(select(User).limit(1)).scalar_one_or_none():
         raise HTTPException(409, "O sistema já possui usuário.")
     username, display_name = username.strip(), display_name.strip()
     if not username or not display_name:
         raise HTTPException(400, "Informe usuário e nome completo.")
+    if len(username) > 80 or len(display_name) > 140:
+        raise HTTPException(400, "Usuário ou nome ultrapassa o tamanho permitido.")
     if not password_is_acceptable(password):
         raise HTTPException(400, "A senha deve ter pelo menos 10 caracteres.")
     user = User(username=username, display_name=display_name, password_hash=hash_password(password), role=UserRole.ADMIN.value)
@@ -209,7 +221,7 @@ def login(request: Request, username: str = Form(...), password: str = Form(...)
     key = _login_guard_key(request, username)
     _assert_login_allowed(db, key)
     user = db.execute(select(User).where(User.username == username.strip())).scalar_one_or_none()
-    if not user or not verify_password(user.password_hash, password):
+    if not user or not user.active or not verify_password(user.password_hash, password):
         _record_login_failure(db, key)
         db.commit()
         raise HTTPException(401, "Usuário ou senha inválidos")
@@ -294,6 +306,12 @@ def admin_election(
     captured_keys = [(keyboard_confirm_key or "Enter").strip(), (keyboard_correct_key or "Backspace").strip(), (keyboard_blank_key or "b").strip()]
     if len({k.lower() for k in captured_keys}) != 3:
         raise HTTPException(400, "CONFIRMA, CORRIGE e BRANCO precisam usar teclas diferentes.")
+    if not name.strip() or len(name.strip()) > 160 or len(institution_name.strip()) > 180:
+        raise HTTPException(400, "Informe um nome de eleição e instituição dentro dos limites permitidos.")
+    if voting_mode not in {"NUMERIC", "SELECTION"}:
+        raise HTTPException(400, "Modo de votação inválido.")
+    if any(not key or len(key) > 40 for key in captured_keys) or len(paper_instruction_text.strip()) > 180:
+        raise HTTPException(400, "Tecla ou instrução de impressão inválida.")
     election.name = name.strip()
     election.institution_name = institution_name.strip()
     election.allow_blank = allow_blank is not None
@@ -337,6 +355,8 @@ def create_user(username: str = Form(...), display_name: str = Form(...), passwo
     username, display_name = username.strip(), display_name.strip()
     if not username or not display_name:
         raise HTTPException(400, "Informe usuário e nome completo.")
+    if len(username) > 80 or len(display_name) > 140:
+        raise HTTPException(400, "Usuário ou nome ultrapassa o tamanho permitido.")
     if not password_is_acceptable(password):
         raise HTTPException(400, "A senha deve ter pelo menos 10 caracteres.")
     if db.execute(select(User).where(User.username == username)).scalar_one_or_none():
@@ -358,6 +378,8 @@ def add_voter(enrollment: str = Form(...), name: str = Form(...), class_code: st
     enrollment, name, class_code, shift = enrollment.strip(), name.strip(), class_code.strip(), shift.strip()
     if not enrollment or not name or not class_code or not shift:
         raise HTTPException(400, "Preencha matrícula, nome, turma e turno.")
+    if len(enrollment) > 32 or len(name) > 180 or len(class_code) > 20 or len(shift) > 30:
+        raise HTTPException(400, "Um dos campos ultrapassa o tamanho permitido.")
     if db.execute(select(Voter).where(Voter.enrollment == enrollment)).scalar_one_or_none():
         raise HTTPException(409, "Matrícula já cadastrada")
     db.add(Voter(enrollment=enrollment, name=name, class_code=class_code, shift=shift))
@@ -383,18 +405,30 @@ def _rows_from_upload(filename: str, content: bytes):
         reader = csv.DictReader(io.StringIO(text))
         return [(None, row) for row in reader]
     if lower.endswith(".xlsx"):
+        # XLSX is a ZIP: a small uploaded file can expand into many gigabytes.
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            if sum(info.file_size for info in archive.infolist()) > 50 * 1024 * 1024:
+                raise HTTPException(400, "A planilha descompactada excede o limite de 50 MB.")
         wb = load_workbook(io.BytesIO(content), read_only=True, data_only=True)
         output = []
-        for ws in wb.worksheets:
-            rows = list(ws.iter_rows(values_only=True))
-            if not rows:
-                continue
-            headers = [str(x).strip() if x is not None else "" for x in rows[0]]
-            class_name = str(ws.title).strip()
-            for values in rows[1:]:
-                if not any(v is not None and str(v).strip() for v in values):
+        try:
+            for ws in wb.worksheets:
+                if ws.max_row and ws.max_row > 50001 or ws.max_column and ws.max_column > 100:
+                    raise HTTPException(400, "Use até 50.000 linhas e 100 colunas por planilha.")
+                rows = ws.iter_rows(values_only=True)
+                header = next(rows, None)
+                if header is None:
                     continue
-                output.append((class_name, dict(zip(headers, values))))
+                headers = [str(x).strip() if x is not None else "" for x in header]
+                class_name = str(ws.title).strip()
+                for values in rows:
+                    if not any(v is not None and str(v).strip() for v in values):
+                        continue
+                    output.append((class_name, dict(zip(headers, values))))
+                    if len(output) > 50000:
+                        raise HTTPException(400, "A importação permite até 50.000 eleitores por arquivo.")
+        finally:
+            wb.close()
         return output
     raise HTTPException(400, "Envie CSV ou XLSX")
 
@@ -406,13 +440,21 @@ async def import_voters(file: UploadFile = File(...), user: User = Depends(requi
     content = await file.read(10 * 1024 * 1024 + 1)
     if len(content) > 10 * 1024 * 1024:
         raise HTTPException(400, "Arquivo de eleitores excede o limite de 10 MB.")
-    rows = _rows_from_upload(file.filename or "", content)
+    try:
+        rows = _rows_from_upload(file.filename or "", content)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(400, "Arquivo de eleitores inválido. Confira o formato CSV UTF-8 ou XLSX.") from exc
+    if len(rows) > 50000:
+        raise HTTPException(400, "A importação permite até 50.000 eleitores por arquivo.")
     aliases = {
         "matricula": "enrollment", "matrícula": "enrollment", "enrollment": "enrollment",
         "nome": "name", "name": "name", "turma": "class_code", "class_code": "class_code",
         "turno": "shift", "shift": "shift",
     }
     count = 0
+    known_enrollments = set(db.scalars(select(Voter.enrollment)).all())
     for sheet_class, row in rows:
         normalized = {}
         for k, v in row.items():
@@ -425,8 +467,12 @@ async def import_voters(file: UploadFile = File(...), user: User = Depends(requi
             normalized["shift"] = "Não informado"
         if not all(normalized.get(k) for k in ("enrollment", "name", "class_code")):
             continue
-        if not db.execute(select(Voter).where(Voter.enrollment == normalized["enrollment"])).scalar_one_or_none():
+        limits = {"enrollment": 32, "name": 180, "class_code": 20, "shift": 30}
+        if any(len(normalized[field]) > limit for field, limit in limits.items()):
+            raise HTTPException(400, "Um campo de eleitor ultrapassa o tamanho permitido. Nenhum eleitor foi importado.")
+        if normalized["enrollment"] not in known_enrollments:
             db.add(Voter(**normalized))
+            known_enrollments.add(normalized["enrollment"])
             count += 1
     append_audit(db, "VOTERS_IMPORTED", user.username, {"count": count})
     db.commit()
@@ -595,10 +641,16 @@ async def add_slate(number: int = Form(...), name: str = Form(...), members_json
     if number < 1 or number > 99:
         raise HTTPException(400, "Número deve ser de 1 a 99")
     clean_name = name.strip()
-    if not clean_name:
+    if not clean_name or len(clean_name) > 150:
         raise HTTPException(400, "Informe o nome da chapa.")
     if db.execute(select(Slate).where(Slate.number == number)).scalar_one_or_none():
         raise HTTPException(409, "Número de chapa já usado")
+    try:
+        members = json.loads(members_json or "[]")
+    except json.JSONDecodeError:
+        raise HTTPException(400, "Integrantes inválidos")
+    if not isinstance(members, list) or len(members) > 100:
+        raise HTTPException(400, "Informe uma lista de até 100 integrantes.")
     slate = Slate(number=number, name=clean_name)
     if logo and logo.filename:
         suffix = Path(logo.filename).suffix.lower()
@@ -607,17 +659,21 @@ async def add_slate(number: int = Form(...), name: str = Form(...), members_json
         content = await logo.read(5 * 1024 * 1024 + 1)
         if not content or len(content) > 5 * 1024 * 1024:
             raise HTTPException(400, "A imagem da chapa deve ter no máximo 5 MB.")
+        try:
+            with Image.open(io.BytesIO(content)) as image:
+                if image.format not in {"PNG", "JPEG", "WEBP"} or image.width * image.height > 16_000_000:
+                    raise HTTPException(400, "Imagem inválida ou maior que 16 megapixels.")
+                image.load()
+                normalized_logo = io.BytesIO()
+                image.convert("RGBA").save(normalized_logo, format="PNG")
+                content = normalized_logo.getvalue()
+        except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as exc:
+            raise HTTPException(400, "O arquivo enviado não é uma imagem válida.") from exc
         upload_dir = USER_STATIC_DIR / "uploads" / "slates"
         upload_dir.mkdir(parents=True, exist_ok=True)
-        file_name = f"chapa_{number}{suffix}"
+        file_name = f"chapa_{number}.png"
         (upload_dir / file_name).write_bytes(content)
         slate.logo_path = f"/user-static/uploads/slates/{file_name}"
-    try:
-        members = json.loads(members_json or "[]")
-    except json.JSONDecodeError:
-        raise HTTPException(400, "Integrantes inválidos")
-    if not isinstance(members, list):
-        raise HTTPException(400, "Integrantes inválidos")
     for i, item in enumerate(members):
         if isinstance(item, dict) and item.get("role") and item.get("name"):
             slate.members.append(SlateMember(role_name=str(item["role"]).strip()[:100], person_name=str(item["name"]).strip()[:160], display_order=i))
@@ -672,7 +728,7 @@ def add_urn(code: str = Form(...), name: str = Form(...), device_secret: str = F
     if count >= MAX_URNS:
         raise HTTPException(409, "Limite de 3 urnas")
     code, name = code.strip().upper(), name.strip()
-    if not code or not name:
+    if not re.fullmatch(r"[A-Z0-9_-]{1,20}", code) or not name or len(name) > 80:
         raise HTTPException(400, "Informe código e nome da urna.")
     if db.execute(select(Urn).where(Urn.code == code)).scalar_one_or_none():
         raise HTTPException(409, "Código de urna já cadastrado")
@@ -1991,7 +2047,7 @@ async def upload_final_sound(sound_file: UploadFile = File(...), user: User = De
     filename = (sound_file.filename or "").lower()
     if not filename.endswith(".mp3"):
         raise HTTPException(400, "Envie um arquivo MP3.")
-    content = await sound_file.read()
+    content = await sound_file.read(5 * 1024 * 1024 + 1)
     if not content or len(content) > 5 * 1024 * 1024:
         raise HTTPException(400, "O MP3 deve ter entre 1 byte e 5 MB.")
     sounds = USER_STATIC_DIR / "sounds"

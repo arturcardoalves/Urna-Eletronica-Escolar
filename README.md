@@ -136,7 +136,7 @@ As alterações conhecidas estão registradas em [docs/CHANGELOG.md](docs/CHANGE
 
 ## Gerar o instalador
 
-O workflow oficial usa Windows e Python 3.13, executa os testes e publica o instalador como artefato:
+O workflow oficial usa Windows e Python 3.13, instala as dependências fixadas, executa os testes e publica o instalador como artefato:
 
 1. Envie o código para a branch `main`.
 2. Abra **Actions → Build Windows Installer**.
@@ -151,6 +151,15 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\installer\BUILD_WINDOW
 ```
 
 Saída: `installer/output/Instalar_Urna_Escolar_2.3.0.exe`. Veja [GERAR_EXE_NO_GITHUB.md](docs/GERAR_EXE_NO_GITHUB.md) para os comandos de envio, download e hash.
+
+Para criar um pacote de código sem bancos, chaves, fotos de eleitores, caches ou saídas de compilação, use o gerador verificado:
+
+```powershell
+New-Item -ItemType Directory -Force .\release-output
+python .\installer\package_source.py --output .\release-output\Urna_Escolar_2.3.0_Fonte_Limpa.zip
+```
+
+O script confere o conteúdo do ZIP, grava um manifesto SHA-256 interno e cria o arquivo `.sha256.txt`. Ele não apaga nem altera os dados existentes fora da cópia distribuída.
 
 ## Estrutura do repositório
 
@@ -170,7 +179,7 @@ Arquivos de build, ambientes Python, executáveis, bancos, chaves, certificados,
 
 ## Qualidade e testes
 
-O projeto possui **38 testes automatizados**. Eles cobrem votação completa, concorrência, vínculo, autenticação, impressão e reimpressão, atualização protegida, certificados TLS, consistência da versão, modos do Edge e margem antes do corte. O workflow também faz testes do executável empacotado em um Windows temporário.
+O projeto possui **50 testes automatizados coletados**. Eles cobrem votação completa, concorrência, vínculo, autenticação, impressão e reimpressão, atualização protegida, certificados TLS, consistência da versão, modos do Edge, margem antes do corte, dados arquivados, imagens longas, reset e interface. O workflow também faz testes do executável empacotado em um Windows temporário.
 
 Testes automatizados não comprovam o funcionamento físico do roteador, cabos, driver, impressora, papel ou guilhotina. Antes da eleição oficial, teste os dois computadores e percorra abertura, votação, falha de papel, recuperação e encerramento.
 

@@ -1,6 +1,18 @@
-# Revisão e limpeza — 08/10/2026
+# Revisão e limpeza — 09/10/2026
 
 Base: pacote local Urna_Escolar_2.3.0. A revisão foi feita numa cópia; a pasta original permanece preservada. A numeração foi mantida porque esta é uma correção de empacotamento e organização da mesma versão.
+
+## Rodada de segurança e entrega
+
+- O instalador deixou de empacotar `URNA_ESCOLAR_SOURCE/01_SERVIDOR_ADMIN/data`; o primeiro uso cria o banco, certificados e chaves no computador instalado.
+- O backup de atualização preserva bancos SQLite auxiliares e arquivados, inclusive dados ainda confirmados no WAL, e recusa links/junções para impedir cópia fora da pasta eleitoral.
+- Os BATs de reset confirmam o papel instalado, exigem a mesma conta Windows, recusam processos abertos e recusam árvores com links/junções antes de apagar qualquer destino.
+- Uploads de chapa agora validam formato, tamanho, dimensões e normalizam a imagem para PNG; planilhas têm limites de expansão, linhas e colunas; entradas de chapa, urna, usuário e eleição são limitadas no servidor.
+- A instalação inicial fica restrita ao próprio computador da Central. A origem `null` e origens com esquema ou host diferente são recusadas nas operações de alteração.
+- O agente HTTP legado de impressão, mantido para compatibilidade de operação sem impressão nativa, aceita apenas clientes de loopback. O aplicativo empacotado continua usando o módulo nativo.
+- O raster ESC/POS é enviado em tiras de no máximo 512 linhas, e layouts longos reservam altura conforme a quantidade de chapas e recusam corte silencioso.
+- As dependências de servidor foram atualizadas para `cryptography 50.0.2`, `python-multipart 0.0.32`, `starlette 1.7.0` e `fastapi 0.143.0`, cobrindo os avisos oficiais consultados. O cliente de testes passou a usar `httpx2`.
+- O gerador `installer/package_source.py` cria o ZIP de fonte por allowlist, exclui dados e confirma o conteúdo pelo manifesto SHA-256.
 
 ## Correções
 
@@ -32,11 +44,17 @@ Os testes, recursos da interface, scripts de verificação de integridade, gera�
 
 ## Validação realizada
 
-Executada a suíte nesta cópia com Python 3.13 e as dependências existentes da versão original: **20 testes aprovados**, em 15,19 segundos. Inclui eleição com 20 votos, apuração, PDF, voto repetido/concorrrente sem duplicação, impressão com falha, reimpressão autorizada, desconexão, vinculação e proteção de atualização. Também inclui a nova regressão do SQLite.
+Na rodada anterior, a suíte desta cópia teve **38 testes aprovados** com Python 3.13. Com os testes de entrega adicionados, são **50 testes coletados**. O conjunto inclui eleição com 20 votos, apuração, PDF, voto repetido/concorrente sem duplicação, impressão com falha, reimpressão autorizada, desconexão, vinculação, modos do Edge, margem antes do corte, dados arquivados, imagens longas, reset e interface.
+
+Nesta rodada, os testes novos do pacote limpo passaram (**2 testes**), os testes de interface Node passaram (**9/9** no ambiente anterior) e o código foi compilado com `compileall`. A suíte completa precisa ser repetida no runner do GitHub depois da instalação de `httpx2`; o ambiente local atual não conseguiu baixar esse pacote e o TestClient do Starlette 1.7 fica incompatível com o `httpx` legado.
 
 O parser do PowerShell não encontrou erros de sintaxe no script de compilação. Os testes produziram 537 avisos de depreciação de bibliotecas/APIs existentes; não foram falhas. Esta revisão não migrou toda a aplicação para novos padrões de datas e lifecycle.
 
-Não foi gerado nem instalado um novo EXE nesta revisão. A compilação e os testes do executável empacotado serão executados pelo workflow ao enviar o código ao GitHub. Testes reais nos dois PCs e na impressora ainda são necessários.
+Não foi gerado nem instalado um novo EXE nesta rodada local. A compilação, o teste do runtime sem Python externo e a instalação descartável dos dois papéis devem ser executados pelo workflow no GitHub. Testes reais nos dois PCs, no roteador, no driver, no papel e na impressora ainda são necessários.
+
+Não foram encontrados padrões de chaves privadas, tokens GitHub ou chaves AWS nos 96 blobs examinados no histórico local. Isso não substitui a revogação de credenciais caso alguma tenha existido fora desses padrões.
+
+O `pip-audit` não pôde consultar a base externa nesta sessão porque a revisão automática de rede foi bloqueada por limite de uso. As versões foram comparadas aos avisos oficiais publicados pelos projetos e fixadas nas versões corrigidas disponíveis no PyPI; a execução oficial do workflow deve repetir a auditoria antes da publicação.
 
 ## Correção posterior de HTTPS
 
