@@ -4,6 +4,9 @@ const setup = document.getElementById('deviceSetup');
 const waiting = document.getElementById('waiting');
 const ballot = document.getElementById('ballot');
 const done = document.getElementById('done');
+const donePrintStatus = document.getElementById('donePrintStatus');
+let recordedDisplay = false;
+let recordedPrintPending = false;
 const closed = document.getElementById('closed');
 const bootCheck = document.getElementById('bootCheck');
 const integrityBlocked = document.getElementById('integrityBlocked');
@@ -29,6 +32,11 @@ connectionBanner.setAttribute('role', 'alert');
 connectionBanner.style.cssText = 'display:none;position:fixed;inset:0;z-index:10000;background:rgba(12,25,42,.96);color:white;padding:25vh 8vw;font:700 28px Atkinson Hyperlegible,Arial;text-align:center';
 document.body.append(connectionBanner);
 function connectionMessage(message) {
+  if (recordedDisplay) {
+    connectionBanner.style.display = 'none';
+    if (message && donePrintStatus) donePrintStatus.textContent = message;
+    return;
+  }
   connectionBanner.textContent = message;
   connectionBanner.style.display = message ? 'block' : 'none';
 }
@@ -292,7 +300,7 @@ document.getElementById('saveSecret')?.addEventListener('click', async () => {
 });
 
 async function poll() {
-  if (!deviceAuthenticated || !integrityReady || authorizationRunning || editingDevice || startingAnonymous || currentToken || pendingRecovery || sendingVote || !connectionReady || Date.now() < doneUntil) return;
+  if (!deviceAuthenticated || !integrityReady || recordedDisplay || authorizationRunning || editingDevice || startingAnonymous || currentToken || pendingRecovery || sendingVote || !connectionReady || Date.now() < doneUntil) return;
   authorizationRunning = true;
   try {
     const r = await fetch(`/api/urna/${urnCode}/authorization`, {cache:'no-store', signal:AbortSignal.timeout(5000)});
@@ -302,7 +310,7 @@ async function poll() {
     if (!r.ok) return;
     const d = await r.json();
     // A resposta pode chegar depois do primeiro toque ou da abertura dos ajustes.
-    if (!integrityReady || editingDevice || startingAnonymous || currentToken || pendingRecovery || sendingVote || Date.now() < doneUntil) return;
+    if (!integrityReady || recordedDisplay || editingDevice || startingAnonymous || currentToken || pendingRecovery || sendingVote || Date.now() < doneUntil) return;
     electionState = d.election_state || electionState;
     applyOperationalConfig(d);
     if (electionState === 'CLOSED') { show(closed); return; }
@@ -408,13 +416,24 @@ function finishRecordedVote(data) {
   resetChoice();
   finalTone();
   doneUntil = Date.now() + 5000;
+  recordedDisplay = true;
+  recordedPrintPending = managedPrint && data.print_state !== 'DONE';
+  if (donePrintStatus) donePrintStatus.textContent = recordedPrintPending ? 'Imprimindo seu voto…' : '';
   show(done);
   if (!managedPrint && data.paper?.enabled) directPrintVote(data.paper, data.ballot_id);
-  setTimeout(() => {
-    doneUntil = 0;
-    if (electionState === 'CLOSED') show(closed); else show(waiting);
-    poll();
-  }, 5000);
+  setTimeout(leaveRecordedScreen, 5000);
+}
+
+function leaveRecordedScreen() {
+  if (!recordedDisplay) return;
+  if (recordedPrintPending || (managedPrint && !connectionReady) || Date.now() < doneUntil) {
+    setTimeout(leaveRecordedScreen, 500);
+    return;
+  }
+  recordedDisplay = false;
+  doneUntil = 0;
+  if (electionState === 'CLOSED') show(closed); else show(waiting);
+  poll();
 }
 
 async function submitVote(type, number = null) {
@@ -455,7 +474,7 @@ async function checkNativeConnection() {
       const result = await fetch(`/api/urna/${urnCode}/vote-status`, {method:'POST',body:new URLSearchParams({token:pendingRecovery}),signal:AbortSignal.timeout(4000)});
       if (!result.ok) throw new Error('Aguarde a confirmação do voto pela Central.');
       const receipt = await result.json();
-      if (receipt.recorded) finishRecordedVote(receipt);
+      if (receipt.recorded) { finishRecordedVote(receipt); return; }
       else {
         currentToken = pendingRecovery;
         pendingRecovery = null;
@@ -464,8 +483,16 @@ async function checkNativeConnection() {
         showInlineError('O voto ainda não foi registrado. Confira a escolha e confirme novamente.');
       }
     }
+    if (recordedDisplay) {
+      if (recordedPrintPending && d.urn_status === 'AVAILABLE') doneUntil = Math.max(doneUntil, Date.now() + 2500);
+      recordedPrintPending = d.urn_status !== 'AVAILABLE';
+      if (donePrintStatus) donePrintStatus.textContent =
+        d.urn_status === 'PRINTING' ? 'Imprimindo seu voto…' :
+        d.urn_status === 'PRINT_ERROR' ? 'Seu voto foi registrado. Aguarde a ajuda do mesário.' :
+        d.print_enabled ? 'Retire a ficha, dobre e deposite na urna.' : '';
+    }
     connectionReady = Boolean(d.native_online) && (!d.print_enabled || d.printer_ready) && !['PRINTING','PRINT_ERROR'].includes(d.urn_status);
-    connectionMessage(connectionReady ? '' : !d.native_online ? 'Aplicativo da urna desconectado. Chame o mesário.' : d.urn_status === 'PRINTING' ? 'Voto registrado. Aguarde a impressão.' : 'Confira a impressora. O mesário precisa resolver a pendência antes do próximo voto.');
+    connectionMessage(recordedDisplay && d.native_online && ['PRINTING','PRINT_ERROR'].includes(d.urn_status) ? '' : connectionReady ? '' : !d.native_online ? 'Aplicativo da urna desconectado. Chame o mesário.' : d.urn_status === 'PRINTING' ? 'Voto registrado. Aguarde a impressão.' : 'Confira a impressora. O mesário precisa resolver a pendência antes do próximo voto.');
   } catch (e) {
     connectionReady = false;
     connectionMessage(pendingRecovery ? 'Verificando se o voto foi registrado. Aguarde; não inicie outro voto.' : (e.name === 'TimeoutError' || e instanceof TypeError) ? 'Servidor desconectado. Confira a Central e os cabos de rede.' : e.message);

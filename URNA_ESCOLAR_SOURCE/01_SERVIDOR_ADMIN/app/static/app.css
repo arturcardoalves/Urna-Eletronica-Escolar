@@ -870,3 +870,6 @@ body{background:var(--bg);font-feature-settings:"kern" 1,"liga" 1}.admin-layout{
 #voterConfirmModal .confirm-urn-choices:empty{
   display:none!important;
 }
+
+/* Keep print feedback on the vote completion screen without an overlay. */
+.done-print-status{min-height:1.5em;max-width:34rem;padding:0 18px;margin:10px 0 0;font-size:16px;font-weight:400;line-height:1.5;text-align:center;color:#596674}

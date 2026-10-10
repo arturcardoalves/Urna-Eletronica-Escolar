@@ -178,3 +178,50 @@ test('final report print failure remains visible after election closes', async (
   assert.match(ui.get('closedPrintStatus').textContent, /permanece encerrada.*falha de impressão.*reimpressão/);
   assert.equal(ui.get('closeElectionForm').wasReset, true);
 });
+
+test('printing stays on VOTOU without dark overlay or early next voter', async () => {
+  const ui = createUI('urna.js');
+  ui.run('deviceAuthenticated = true; integrityReady = true; managedPrint = true');
+  ui.run("finishRecordedVote({print_state:'PENDING'})");
+  ui.context.fetch = async () => response({native_online:true, print_enabled:true, printer_ready:true, urn_status:'PRINTING'});
+  await ui.run('checkNativeConnection()');
+  ui.run('doneUntil = 0; leaveRecordedScreen()');
+  assert.equal(ui.get('done').classList.contains('hidden'), false);
+  assert.equal(ui.get('donePrintStatus').textContent, 'Imprimindo seu voto…');
+  assert.equal(ui.run('connectionBanner.style.display'), 'none');
+  assert.equal(ui.run('connectionReady'), false);
+  let calls=0;
+  ui.context.fetch=async()=>{calls++; return response({});};
+  await ui.run('poll()');
+  assert.equal(calls,0);
+});
+
+test('print failure and recovery update the same completion screen', async () => {
+  const ui=createUI('urna.js');
+  ui.run('deviceAuthenticated=true; integrityReady=true; managedPrint=true');
+  ui.run("finishRecordedVote({print_state:'PENDING'})");
+  ui.context.fetch=async()=>response({native_online:true, print_enabled:true, printer_ready:true, urn_status:'PRINT_ERROR'});
+  await ui.run('checkNativeConnection()');
+  assert.match(ui.get('donePrintStatus').textContent,/mesário/);
+  assert.equal(ui.run('connectionBanner.style.display'),'none');
+  ui.run('doneUntil=0; leaveRecordedScreen()');
+  assert.equal(ui.get('done').classList.contains('hidden'),false);
+  ui.context.fetch=async()=>response({native_online:true, print_enabled:true, printer_ready:true, urn_status:'AVAILABLE'});
+  await ui.run('checkNativeConnection()');
+  assert.match(ui.get('donePrintStatus').textContent,/Retire a ficha/);
+  ui.run('doneUntil=0; leaveRecordedScreen()');
+  assert.equal(ui.get('done').classList.contains('hidden'),true);
+});
+
+test('network loss after recording keeps confirmation visible and blocks next voter', async () => {
+  const ui=createUI('urna.js');
+  ui.run('deviceAuthenticated=true; integrityReady=true; managedPrint=true');
+  ui.run("finishRecordedVote({print_state:'PENDING'})");
+  ui.context.fetch=async()=>{throw ui.run("new TypeError('offline')");};
+  await ui.run('checkNativeConnection()');
+  ui.run('doneUntil=0; leaveRecordedScreen()');
+  assert.equal(ui.get('done').classList.contains('hidden'),false);
+  assert.match(ui.get('donePrintStatus').textContent,/desconectado/);
+  assert.equal(ui.run('connectionBanner.style.display'),'none');
+  assert.equal(ui.run('connectionReady'),false);
+});
