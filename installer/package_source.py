@@ -16,7 +16,7 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 TOP_FILES = {'.gitignore', 'README.md', 'SEGURANCA.md',
              'RESETAR_PC_CENTRAL_MESA.bat', 'RESETAR_PC_URNA.bat'}
-TREES = {'.github', 'installer', 'tests', 'docs', 'URNA_ESCOLAR_SOURCE'}
+TREES = {'.github', 'demo', 'installer', 'tests', 'docs', 'URNA_ESCOLAR_SOURCE'}
 EXTENSIONS = {'.py', '.js', '.css', '.html', '.md', '.txt', '.toml', '.ps1',
               '.spec', '.iss', '.yml', '.yaml', '.svg', '.mp3', '.json'}
 SKIP_DIRS = {'__pycache__', '.pytest_cache', 'output', 'build', 'dist',
