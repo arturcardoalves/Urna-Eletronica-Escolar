@@ -22,6 +22,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .audit import append_audit
+from .voter_registration import student_fields
 from .auth import create_session, current_user, get_db, require_role
 from .config import APP_VERSION, BASE_DIR, MAX_URNS, DB_PATH, PUBLIC_KEY_PATH, PRIVATE_KEY_PATH, PRIVATE_KEY_PASSWORD_PATH, DATA_DIR
 from .db import init_db
@@ -375,23 +376,23 @@ def create_user(username: str = Form(...), display_name: str = Form(...), passwo
 
 
 @app.post("/admin/voters/manual")
-def add_voter(enrollment: str = Form(...), name: str = Form(...), class_code: str = Form(...), shift: str = Form(...), user: User = Depends(require_role(UserRole.ADMIN.value)), db: Session = Depends(get_db)):
+def add_voter(enrollment: str = Form(""), name: str = Form(...), class_code: str = Form(...), shift: str = Form(""), user: User = Depends(require_role(UserRole.ADMIN.value)), db: Session = Depends(get_db)):
     if get_election(db).state != ElectionState.CONFIG.value:
         raise HTTPException(409, "Eleitores só podem ser alterados antes da lacração.")
-    enrollment, name, class_code, shift = enrollment.strip(), name.strip(), class_code.strip(), shift.strip()
-    if not enrollment or not name or not class_code or not shift:
-        raise HTTPException(400, "Preencha matrícula, nome, turma e turno.")
-    if len(enrollment) > 32 or len(name) > 180 or len(class_code) > 20 or len(shift) > 30:
-        raise HTTPException(400, "Um dos campos ultrapassa o tamanho permitido.")
+    try:
+        fields = student_fields(name, class_code, enrollment, shift)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    enrollment = fields['enrollment']
     if db.execute(select(Voter).where(Voter.enrollment == enrollment)).scalar_one_or_none():
-        raise HTTPException(409, "Matrícula já cadastrada")
-    db.add(Voter(enrollment=enrollment, name=name, class_code=class_code, shift=shift))
+        raise HTTPException(409, "Aluno ou matrícula já cadastrado. Para alunos com o mesmo nome na mesma turma, informe códigos diferentes no campo matrícula.")
+    db.add(Voter(**fields))
     append_audit(db, "VOTER_ADDED", user.username, {"enrollment": enrollment})
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(409, "Matrícula já cadastrada")
+        raise HTTPException(409, "Aluno ou matrícula já cadastrado. Para alunos com o mesmo nome na mesma turma, informe códigos diferentes no campo matrícula.")
     return RedirectResponse("/admin?section=voters", status_code=303)
 
 
@@ -468,11 +469,12 @@ async def import_voters(file: UploadFile = File(...), user: User = Depends(requi
             normalized["class_code"] = sheet_class
         if not normalized.get("shift"):
             normalized["shift"] = "Não informado"
-        if not all(normalized.get(k) for k in ("enrollment", "name", "class_code")):
+        if not all(normalized.get(k) for k in ("name", "class_code")):
             continue
-        limits = {"enrollment": 32, "name": 180, "class_code": 20, "shift": 30}
-        if any(len(normalized[field]) > limit for field, limit in limits.items()):
-            raise HTTPException(400, "Um campo de eleitor ultrapassa o tamanho permitido. Nenhum eleitor foi importado.")
+        try:
+            normalized = student_fields(**normalized)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc) + " Nenhum eleitor foi importado.") from exc
         if normalized["enrollment"] not in known_enrollments:
             db.add(Voter(**normalized))
             known_enrollments.add(normalized["enrollment"])
@@ -582,8 +584,8 @@ def admin_voter_exception_status(
 
 @app.post("/api/admin/voters/exception/add")
 def admin_voter_exception_add(
-    ticket: str = Form(...), enrollment: str = Form(...), name: str = Form(...),
-    class_code: str = Form(...), shift: str = Form(...),
+    ticket: str = Form(...), enrollment: str = Form(""), name: str = Form(...),
+    class_code: str = Form(...), shift: str = Form(""),
     user: User = Depends(require_role(UserRole.ADMIN.value)), db: Session = Depends(get_db),
 ):
     election = get_election(db)
@@ -592,16 +594,12 @@ def admin_voter_exception_add(
     permit = _voter_exception_permit(db, ticket, user)
     if permit.printed_at is None:
         raise HTTPException(409, "A ocorrência de autorização ainda não foi confirmada pelo sistema.")
-    fields = {
-        "enrollment": enrollment.strip(), "name": name.strip(),
-        "class_code": class_code.strip(), "shift": shift.strip(),
-    }
-    if not all(fields.values()):
-        raise HTTPException(400, "Preencha matrícula, nome, turma e turno.")
-    if len(fields["enrollment"]) > 32 or len(fields["name"]) > 180 or len(fields["class_code"]) > 20 or len(fields["shift"]) > 30:
-        raise HTTPException(400, "Um dos campos ultrapassa o tamanho permitido.")
+    try:
+        fields = student_fields(name, class_code, enrollment, shift)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
     if db.execute(select(Voter).where(Voter.enrollment == fields["enrollment"])).scalar_one_or_none():
-        raise HTTPException(409, "Matrícula já cadastrada. Esta autorização continua disponível para correção.")
+        raise HTTPException(409, "Aluno ou matrícula já cadastrado. Para homônimos na mesma turma, informe códigos diferentes. Esta autorização continua disponível para correção.")
 
     try:
         verify_sealed_integrity(db)
@@ -626,7 +624,7 @@ def admin_voter_exception_add(
         db.commit()
     except IntegrityError:
         db.rollback()
-        raise HTTPException(409, "Matrícula já cadastrada. Esta autorização continua disponível para correção.")
+        raise HTTPException(409, "Aluno ou matrícula já cadastrado. Para homônimos na mesma turma, informe códigos diferentes. Esta autorização continua disponível para correção.")
     except DomainError as exc:
         db.rollback()
         raise HTTPException(409, str(exc)) from exc

@@ -77,3 +77,9 @@ Foram acrescentados 10 testes para limites, conversão milimétrica ESC/POS, cor
 A tela FIM / VOTOU agora mantém um aviso discreto acima de VOTOU durante a impressão nativa, sem o painel escuro de conexão. Pendências de impressão e desconexão mantêm a confirmação visível e bloqueiam a próxima autorização. Após a impressão ser informada como concluída, a orientação de retirar a ficha permanece por pelo menos 2,5 segundos. O retorno normal continua respeitando os 5 segundos mínimos da tela de conclusão.
 
 Validação: 12 testes Node da interface aprovados, incluindo impressão pendente, falha, recuperação e desconexão. São simulações de DOM e rede; aparência em navegador real e impressão física não foram testadas nesta alteração.
+
+## Cadastro simplificado — 12/10/2026
+
+Nome e turma são os únicos campos obrigatórios no cadastro manual, importação e cadastro excepcional. Matrícula e turno continuam opcionais. O identificador automático é estável por nome/turma (normaliza caixa e espaços), evitando repetir os registros sem matrícula ao reimportar a mesma lista. Homônimos da mesma turma exigem códigos explícitos distintos. Sem turno, usa “Não informado”. Mantidos o campo interno único, as permissões, a lacração e o fluxo de autorização excepcional. Nenhum banco existente foi alterado por esta revisão.
+
+Executados 6 testes em SQLite em memória, chamando as funções reais de cadastro/importação: nome e turma, duplicidade/homônimos, campos antigos, campos obrigatórios e bloqueio após lacração, CSV com reimportação e XLSX apenas com Nome. Todos passaram. Não é uma validação de navegador nem de instalador Windows.

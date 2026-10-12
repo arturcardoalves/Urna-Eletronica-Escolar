@@ -197,3 +197,9 @@ Testes automatizados não comprovam o funcionamento físico do roteador, cabos, 
 ## Estado do projeto
 
 O sistema está em desenvolvimento e validação para uso escolar. A versão 2.3.0 deve passar pelo GitHub Actions e por uma eleição física de teste antes de ser usada. Relate problemas com passos para reproduzir, versão instalada, papel da máquina e mensagens do Diagnóstico, sem anexar banco, credenciais, chaves ou dados de eleitores.
+
+### Cadastro com nome e turma
+
+Matrícula e turno são opcionais no cadastro manual e no cadastro excepcional autorizado. Sem matrícula, o sistema gera um código interno; sem turno, registra “Não informado”. A busca pelo nome na Mesa permanece disponível.
+
+Para importar CSV, basta usar as colunas `Nome,Turma`. Em XLSX, cada aba representa uma turma e basta a coluna `Nome`. As colunas `Matricula` e `Turno` continuam aceitas. Reimportar o mesmo nome e turma sem matrícula reutiliza o código, evitando duplicação. Dois alunos com o mesmo nome completo na mesma turma precisam de matrículas ou códigos distintos informados manualmente. Mudanças no nome ou na turma podem gerar outro código: revise a lista antes da lacração.
