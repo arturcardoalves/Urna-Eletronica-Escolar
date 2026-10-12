@@ -326,7 +326,7 @@ def admin_election(
     election.voter_lookup_mode = lookup
     election.show_members_on_ballot = show_members_on_ballot is not None
     election.voting_mode = voting_mode
-    election.sound_enabled = sound_enabled is not None
+    election.sound_enabled = True
     election.paper_enabled = paper_enabled is not None
     election.paper_change_warning_enabled = paper_change_warning_enabled is not None
     election.paper_change_warning_votes = max(20, min(int(paper_change_warning_votes or 200), 5000))
@@ -1203,7 +1203,7 @@ def urn_authorization(request: Request, urn_code: str, x_urn_secret: str | None 
         operational = {
             "election_state": election.state,
             "voting_mode": effective_mode,
-            "sound_enabled": bool(election.sound_enabled),
+            "sound_enabled": True,
             "keyboard_confirm_key": election.keyboard_confirm_key,
             "keyboard_correct_key": election.keyboard_correct_key,
             "keyboard_blank_key": election.keyboard_blank_key,
@@ -1215,7 +1215,7 @@ def urn_authorization(request: Request, urn_code: str, x_urn_secret: str | None 
     operational = {
         "election_state": election.state,
         "voting_mode": effective_mode,
-        "sound_enabled": bool(election.sound_enabled),
+        "sound_enabled": True,
         "keyboard_confirm_key": election.keyboard_confirm_key,
         "keyboard_correct_key": election.keyboard_correct_key,
         "keyboard_blank_key": election.keyboard_blank_key,
@@ -1476,7 +1476,7 @@ def urn_device_config(request: Request, urn_code: str, x_urn_secret: str | None 
         "election_state": get_election(db).state,
         "voting_mode": urn.voting_mode_override if (urn.voting_mode_override and urn.voting_mode_override != "INHERIT") else get_election(db).voting_mode,
         "voting_mode_source": "urn" if (urn.voting_mode_override and urn.voting_mode_override != "INHERIT") else "election",
-        "sound_enabled": bool(get_election(db).sound_enabled),
+        "sound_enabled": True,
         "keyboard_confirm_key": get_election(db).keyboard_confirm_key,
         "keyboard_correct_key": get_election(db).keyboard_correct_key,
         "keyboard_blank_key": get_election(db).keyboard_blank_key,

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}{{ urn.name }}{% endblock %}
 {% block body %}
-<main class="urn-shell" data-urn="{{ urn.code }}" data-mode="{{ urn.voting_mode_override if urn.voting_mode_override and urn.voting_mode_override != 'INHERIT' else election.voting_mode }}" data-blank="{{ '1' if election.allow_blank else '0' }}" data-sound="{{ '1' if election.sound_enabled else '0' }}" data-sound-url="{{ final_sound_url }}?v={{ app_version }}" data-key-confirm="{{ election.keyboard_confirm_key }}" data-key-correct="{{ election.keyboard_correct_key }}" data-key-blank="{{ election.keyboard_blank_key }}" data-initial-state="{{ election.state }}" data-identification="{{ '1' if election.voter_identification_enabled else '0' }}">
+<main class="urn-shell" data-urn="{{ urn.code }}" data-mode="{{ urn.voting_mode_override if urn.voting_mode_override and urn.voting_mode_override != 'INHERIT' else election.voting_mode }}" data-blank="{{ '1' if election.allow_blank else '0' }}" data-sound="1" data-sound-url="{{ final_sound_url }}?v={{ app_version }}" data-key-confirm="{{ election.keyboard_confirm_key }}" data-key-correct="{{ election.keyboard_correct_key }}" data-key-blank="{{ election.keyboard_blank_key }}" data-initial-state="{{ election.state }}" data-identification="{{ '1' if election.voter_identification_enabled else '0' }}">
   <section id="deviceSetup" class="urn-setup-card hidden">
     <div class="brand-mark large">UE</div><span class="eyebrow">CONFIGURAÇÃO DO DISPOSITIVO</span><h1>{{ urn.name }}</h1>
     <p>Escolha a impressora conectada a este computador. A configuração fica vinculada a esta urna.</p>

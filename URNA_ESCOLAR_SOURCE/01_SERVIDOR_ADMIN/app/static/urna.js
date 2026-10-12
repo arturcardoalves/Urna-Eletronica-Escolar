@@ -79,7 +79,7 @@ function applyOperationalConfig(d = {}) {
   if (d.keyboard_correct_key) keyCorrect = d.keyboard_correct_key;
   if (d.keyboard_blank_key) keyBlank = d.keyboard_blank_key;
   if (d.voting_mode) votingMode = d.voting_mode;
-  if (typeof d.sound_enabled === 'boolean') shell.dataset.sound = d.sound_enabled ? '1' : '0';
+  shell.dataset.sound = '1'; // Sound is mandatory, including legacy settings.
   if (typeof d.anonymous_mode === 'boolean') anonymousMode = d.anonymous_mode;
   const numeric = document.getElementById('numericMode');
   const selection = document.getElementById('selectionMode');
@@ -89,7 +89,6 @@ function applyOperationalConfig(d = {}) {
 
 
 function tone(ms = 90, freq = 760) {
-  if (shell.dataset.sound !== '1') return;
   try {
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     const ctx = new AudioCtx();
@@ -106,7 +105,6 @@ function tone(ms = 90, freq = 760) {
 }
 
 function finalTone() {
-  if (shell.dataset.sound !== '1') return;
   const url = shell.dataset.soundUrl;
   if (url) {
     try {

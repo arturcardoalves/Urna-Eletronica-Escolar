@@ -83,3 +83,9 @@ Validação: 12 testes Node da interface aprovados, incluindo impressão pendent
 Nome e turma são os únicos campos obrigatórios no cadastro manual, importação e cadastro excepcional. Matrícula e turno continuam opcionais. O identificador automático é estável por nome/turma (normaliza caixa e espaços), evitando repetir os registros sem matrícula ao reimportar a mesma lista. Homônimos da mesma turma exigem códigos explícitos distintos. Sem turno, usa “Não informado”. Mantidos o campo interno único, as permissões, a lacração e o fluxo de autorização excepcional. Nenhum banco existente foi alterado por esta revisão.
 
 Executados 6 testes em SQLite em memória, chamando as funções reais de cadastro/importação: nome e turma, duplicidade/homônimos, campos antigos, campos obrigatórios e bloqueio após lacração, CSV com reimportação e XLSX apenas com Nome. Todos passaram. Não é uma validação de navegador nem de instalador Windows.
+
+## Som sempre ativo — 12/10/2026
+
+Retirada a opção de desativar o som na administração. A configuração operacional e a interface da urna mantêm o som ativo mesmo quando um cadastro antigo contém sound_enabled=false. O campo histórico do banco foi preservado para não reescrever hashes de configurações já lacradas; novas configurações salvas usam true. Mantida a substituição do MP3 e a tentativa de sinal curto quando a reprodução falha.
+
+Validação: 14 testes Node aprovados, incluindo chamada do áudio após voto com configuração antiga desativada e fallback em falha do MP3. São testes simulados: não confirmam reprodução em alto-falantes nem contornam volume mudo ou bloqueio de áudio do navegador. Atualizações devem ser instaladas antes da lacração de uma nova eleição.

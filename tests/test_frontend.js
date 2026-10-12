@@ -225,3 +225,20 @@ test('network loss after recording keeps confirmation visible and blocks next vo
   assert.equal(ui.run('connectionBanner.style.display'),'none');
   assert.equal(ui.run('connectionReady'),false);
 });
+
+test('completed vote plays sound even with an old disabled setting', () => {
+  const ui=createUI('urna.js', {sound:'0', soundUrl:'/static/sounds/final.mp3'});
+  const played=[];
+  ui.context.Audio=class {constructor(url){this.url=url;} play(){played.push(this.url); return Promise.resolve();}};
+  ui.run('applyOperationalConfig({sound_enabled:false}); finishRecordedVote({})');
+  assert.deepEqual(played,['/static/sounds/final.mp3']);
+  assert.equal(ui.get('shell').dataset.sound,'1');
+});
+
+test('failed audio playback still attempts fallback tone with legacy sound disabled', async () => {
+  const ui=createUI('urna.js', {sound:'0', soundUrl:'/static/sounds/final.mp3'});
+  ui.context.Audio=class {play(){return Promise.reject(new Error('audio failed'));}};
+  ui.run('var fallbackCalls=0; tone=()=>{fallbackCalls++;}; finalTone()');
+  await Promise.resolve();
+  assert.equal(ui.run('fallbackCalls'),1);
+});
