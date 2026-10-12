@@ -89,3 +89,9 @@ Executados 6 testes em SQLite em memória, chamando as funções reais de cadast
 Retirada a opção de desativar o som na administração. A configuração operacional e a interface da urna mantêm o som ativo mesmo quando um cadastro antigo contém sound_enabled=false. O campo histórico do banco foi preservado para não reescrever hashes de configurações já lacradas; novas configurações salvas usam true. Mantida a substituição do MP3 e a tentativa de sinal curto quando a reprodução falha.
 
 Validação: 14 testes Node aprovados, incluindo chamada do áudio após voto com configuração antiga desativada e fallback em falha do MP3. São testes simulados: não confirmam reprodução em alto-falantes nem contornam volume mudo ou bloqueio de áudio do navegador. Atualizações devem ser instaladas antes da lacração de uma nova eleição.
+
+## Cartão de confirmação compacto — 12/10/2026
+
+Na votação por mouse, o cartão de conferência passou a ocupar somente a altura das informações e dos botões, centralizado na área de votação, com largura máxima de 920 px. Em áreas menores, o conteúdo pode rolar para manter os controles acessíveis. O botão CORRIGIR agora é vermelho com texto branco, com estados de foco e passagem do mouse.
+
+Validação visual em navegador com HTML, CSS e JavaScript oficiais, dados fictícios e respostas de servidor simuladas: escolha de chapa, retorno por CORRIGIR e conferência de voto em branco. Não foram alteradas regras de registro de votos, autenticação ou impressão. Esta revisão visual não representa teste do instalador ou da impressora física.
