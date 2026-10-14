@@ -11,6 +11,8 @@ on:
       - 'docs/**'
       - 'installer/**'
       - 'URNA_ESCOLAR_SOURCE/**'
+      - 'portal/**'
+      - 'transmitter/**'
       - '.github/workflows/build-windows-installer.yml'
 
 jobs:
@@ -27,6 +29,11 @@ jobs:
         with:
           python-version: '3.13'
           architecture: 'x64'
+
+      - name: Configurar Node 24 para os testes de interface e verificação
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
 
       - name: Instalar Inno Setup 6
         shell: powershell
@@ -46,6 +53,17 @@ jobs:
           }
           Get-FileHash $file -Algorithm SHA256
           Get-Item $file | Format-List Name,Length,LastWriteTime
+
+      - name: Verificar primeiro uso e publicacao nos executaveis
+        shell: powershell
+        run: .\.build-venv\Scripts\python.exe .\installer\smoke_frozen.py
+
+      - name: Publicar Transmissor Eleitoral
+        uses: actions/upload-artifact@v4
+        with:
+          name: Transmissor-Eleitoral-Windows
+          path: dist/TransmissorEleitoral.exe
+          if-no-files-found: error
 
       - name: Publicar instalador como artefato
         uses: actions/upload-artifact@v4
@@ -76,5 +94,7 @@ jobs:
           name: Logs-instalacao-2.3.0
           path: |
             installer/build-log.txt
-            test-results/**
+            test-results/**/*.xml
+            test-results/**/*.log
+            test-results/**/*.txt
             C:/ProgramData/UrnaEscolar/logs/**

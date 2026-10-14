@@ -4,17 +4,27 @@
 
 Use o mesmo **Instalar_Urna_Escolar_2.3.0.exe** nos dois computadores Windows 10/11 de 64 bits. O programa inclui seu próprio runtime; não usa o Python instalado no computador e não pede pip nem terminal. A instalação requer uma conta com permissão de administrador. O uso diário é pela conta normal do Windows.
 
+O instalador oferece três opções: **Central da Eleição + Mesa Eleitoral**, **Urna de votação + impressora USB** e **Publicação de resultados — Transmissor Eleitoral**. A terceira opção é para o computador com internet: instala o transmissor e cria o atalho **Publicação de Resultados**, sem instalar servidor ou urna em uma instalação nova e sem iniciar automaticamente a votação. É o mesmo arquivo EXE para as três funções; escolha a função do computador durante a instalação.
+
 Antes de desconectar a internet, instale Microsoft Edge, a fonte **Atkinson Hyperlegible Regular e Bold** nos dois PCs e o driver da impressora **apenas no PC da urna**. Confira data e hora. Atualize somente com a eleição em configuração ou encerrada; a atualização faz backup e bloqueia eleições lacradas/abertas.
+
+## Downloads de preparação
+
+- [Microsoft Edge — página oficial](https://www.microsoft.com/en-us/edge/download).
+- [Atkinson Hyperlegible — Braille Institute](https://www.brailleinstitute.org/freefont/): use a família original, nas variantes Regular e Bold esperadas pelo projeto.
+- Driver: obtenha no fabricante da sua impressora, para o modelo e Windows usados.
+
+O instalador da Urna é baixado em **Actions → Build Windows Installer → execução concluída com sucesso → Artifacts → Instalador-Urna-Escolar-2.3.0**. Extraia o ZIP para encontrar o EXE. Entre na conta do GitHub para baixar o artefato. Não confunda com o ZIP de código-fonte.
 
 ## Ligue os equipamentos
 
-Conecte os dois PCs por cabo às portas **LAN** do mesmo roteador. Deixe a porta WAN sem conexão à internet. Desative o Wi-Fi do roteador e dos PCs. O aplicativo não desliga esses rádios: essa preparação é feita no equipamento. Mantenha DHCP habilitado no roteador. Não use rede de convidados nem isolamento entre clientes.
+Conecte os dois PCs por cabo às portas **LAN** do mesmo roteador. Deixe a porta WAN sem conexão à internet. Desative o Wi-Fi do roteador e dos PCs. O aplicativo não desliga esses rádios: essa preparação é feita no equipamento. Em roteadores comuns ele costuma estar ativo: mantenha DHCP habilitado no roteador. Não é necessário fixar o IP no cenário padrão. Um cabo direto entre os PCs não segue este procedimento. Não use rede de convidados nem isolamento entre clientes.
 
 ## Computador 1 — Central + Mesa
 
 1. Execute o instalador e escolha **Central da Eleição + Mesa Eleitoral**.
 2. Abra a Central pelo atalho. Aguarde **Servidor ativo — HTTPS verificado**.
-3. Clique **Abrir administração**. Na primeira vez, crie o administrador; depois entre com sua senha.
+3. Clique **Abrir administração** no próprio computador da Central. Na primeira vez, crie o administrador com senha de pelo menos 10 caracteres; depois entre com sua senha. O primeiro cadastro só aceita acesso local: não o faça pelo IP da rede em outro PC.
 4. Prepare os dados da eleição, as chapas, os eleitores e um usuário **MESÁRIO**. Ainda não lacre a eleição.
 5. Na Central, clique **Conectar computador da urna**. Entre como administrador, se necessário, e clique **Permitir conexão por 5 minutos**.
 
@@ -59,6 +69,16 @@ A confirmação de impressão deve ser repetida depois de reiniciar o aplicativo
 Ligar roteador e PCs → abrir Central e Urna → conferir conexão → testar o papel → abrir Mesa → realizar o procedimento eleitoral. Depois do primeiro vínculo, não há arquivo de configuração para copiar, IP para digitar ou certificado para escolher.
 
 O programa usa arquivos internos instalados automaticamente. “Um arquivo” significa um único instalador entregue a você, não ausência de arquivos internos no Windows.
+
+## Publicação por pendrive e Transmissor Eleitoral
+
+A votação continua offline. Antes de lacrar, abra **Administração → Publicação e mídia USB**, salve o endereço definitivo do portal e obtenha o UUID e a impressão digital da chave. O responsável pelo portal precisa cadastrar essas referências e a credencial de transmissão; somente colocar o site no ar não autoriza os envios. Consulte [PUBLICACAO_E_PORTAL.md](PUBLICACAO_E_PORTAL.md) e [PORTAL_CLOUDFLARE.md](PORTAL_CLOUDFLARE.md).
+
+A Central copia automaticamente os documentos prontos ao detectar uma única mídia removível. Com várias mídias, escolha pela Administração. Zerésimas e BUs aguardam a confirmação de impressão. A opção **Exportar novamente** preserva os bytes e as assinaturas. Ejete o pendrive pelo Windows depois da confirmação.
+
+No computador com internet, execute o mesmo instalador, escolha **Publicação de resultados — Transmissor Eleitoral** e abra o atalho **Publicação de Resultados**. O EXE independente também continua disponível como alternativa. Não exige Python. Informe endereço, UUID, impressão digital e credencial; selecione os pacotes e confirme o envio. Não existe execução automática pelo pendrive. Guarde os comprovantes. Em falha de comunicação, preserve a mídia e repita o envio: o mesmo pacote retorna o mesmo protocolo sem duplicar votos. Não feche o transmissor durante um envio.
+
+Os comandos de manutenção do portal são executados na cópia do código-fonte, pelo responsável. Python/Node usados para manutenção ou compilação não são exigidos nos computadores de votação.
 
 ## Depois de uma eleição de teste
 

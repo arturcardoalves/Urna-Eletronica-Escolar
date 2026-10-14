@@ -68,7 +68,7 @@ def election_config_payload(db: Session) -> dict:
         .where(Voter.exceptional_addition == False)
         .order_by(Voter.enrollment)
     ).all()
-    return {
+    payload = {
         "version": APP_VERSION,
         "election": {
             "name": election.name,
@@ -125,6 +125,12 @@ def election_config_payload(db: Session) -> dict:
             for e, n, c, sh in voters
         ] if election.voter_identification_enabled else []),
     }
+
+    from .publication import seal_binding
+    public = seal_binding(db, election.election_uuid)
+    if public:
+        payload["publication"] = public
+    return payload
 
 
 AMENDMENT_GENESIS = "0" * 64

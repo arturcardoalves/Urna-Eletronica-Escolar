@@ -422,6 +422,42 @@ def _receipt_canvas_height(paper: dict[str, Any]) -> int:
     return height
 
 
+
+def _append_publication_qrs(receipt, paper):
+    """Two vertically stacked QR codes, four-module quiet zone, >=4 pixels/module."""
+    publication = paper.get('publication')
+    if not publication:
+        return receipt
+    from publication_core.documents import qr_image
+    codes = [("CONSULTA PUBLICA", qr_image(publication['consultation'])),
+             ("VERIFICACAO DIGITAL", qr_image(publication['verification']))]
+    import textwrap
+    correction = textwrap.wrap(publication.get('correction', ''), 52)
+    extra = sum(img.height + 72 for _, img in codes) + 200 + len(correction)*24
+    result = Image.new('L', (receipt.width, receipt.height + extra), 255)
+    result.paste(receipt, (0, 0))
+    draw = ImageDraw.Draw(result)
+    y = receipt.height + 16
+    draw.text((24,y), 'DOCUMENTO PUBLICO - REVISAO '+str(publication.get('revision',1)), font=_pil_font(18, True), fill=0)
+    y += 32
+    for line in correction:
+        draw.text((24,y),line,font=_pil_font(18,False),fill=0)
+        y += 24
+    for label, img in codes:
+        draw.text((24, y), label, font=_pil_font(22, True), fill=0)
+        y += 38
+        result.paste(img, ((receipt.width - img.width) // 2, y))
+        y += img.height + 34
+    draw.text((24, y), 'ID: '+publication['document_id'], font=_pil_font(14, False), fill=0)
+    y += 28
+    draw.text((24, y), 'CHAVE PUBLICA (SHA-256):', font=_pil_font(16, True), fill=0)
+    y += 26
+    for part in (publication['fingerprint'][:32], publication['fingerprint'][32:]):
+        draw.text((24, y), part, font=_pil_font(16, False), fill=0)
+        y += 25
+    return result.crop((0, 0, result.width, y + 24))
+
+
 def _render_zero_receipt_image(paper: dict[str, Any]):
     width = 576
     image = Image.new("L", (width, _receipt_canvas_height(paper)), 255)
@@ -512,7 +548,7 @@ def _render_zero_receipt_image(paper: dict[str, Any]):
     if y + 20 > image.height:
         raise RuntimeError("O recibo excede a área preparada. Impressão cancelada para não cortar informações.")
     cropped = image.crop((0, 0, width, y + 20))
-    return cropped
+    return _append_publication_qrs(cropped, paper)
 
 
 def _render_result_receipt_image(paper: dict[str, Any]):
@@ -536,11 +572,13 @@ def _render_result_receipt_image(paper: dict[str, Any]):
 
     y = _receipt_section_title(draw, 'MOVIMENTO DE ELEITORES', y)
     cells = [('APTOS', f"{int(paper.get('registered') or 0):03d}", 150, 20), ('COMPARECERAM', f"{int(paper.get('total') or 0):03d}", 206, 17), ('FALTOSOS', f"{int(paper.get('absent') or 0):03d}", 150, 20)]
+    if not paper.get('identified',True):
+        cells=[('VOTOS',str(int(paper.get('total') or 0)),150,20),('IDENTIFICAÇÃO','DESATIVADA',206,17),('COMPARECIMENTO','NÃO AFERIDO',150,12)]
     x = 25
     for label, value, cw, label_sz in cells:
         draw.rectangle((x, y, x + cw, y + 96), outline=0, width=2)
         _receipt_center_rect(draw, label, _pil_font(label_sz, True), x, y + 9, cw, 28)
-        _receipt_center_rect(draw, value, _pil_font(40, True), x, y + 42, cw, 42)
+        _receipt_center_rect(draw, value, _pil_font(40 if value.isdigit() else 18, True), x, y + 42, cw, 42)
         x += cw + 10
     y += 122
 
@@ -612,7 +650,7 @@ def _render_result_receipt_image(paper: dict[str, Any]):
     if y + 20 > image.height:
         raise RuntimeError("O recibo excede a área preparada. Impressão cancelada para não cortar informações.")
     cropped = image.crop((0, 0, width, y + 20))
-    return cropped
+    return _append_publication_qrs(cropped, paper)
 
 
 def _escpos_receipt(job: PrintJob) -> bytes:

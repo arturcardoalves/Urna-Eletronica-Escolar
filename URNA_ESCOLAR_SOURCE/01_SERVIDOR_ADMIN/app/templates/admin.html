@@ -18,6 +18,7 @@
       <div><strong>Urna Escolar</strong><small>Administração</small></div>
     </div>
     <nav class="admin-nav">
+      <a href="/admin/publication">Publicação e mídia USB</a>
       <a class="{% if section=='overview' %}active{% endif %}" href="/admin?section=overview">Visão geral</a>
       {% if election.state == 'CONFIG' %}
       <div class="nav-group-label">PREPARAÇÃO</div>
@@ -77,7 +78,7 @@
           <div class="timeline-step {% if election.state == 'CLOSED' %}done{% endif %}"><b>4</b><span>Encerramento</span></div>
         </div>
         <div class="action-row">
-          {% if election.state == 'CONFIG' %}<form method="post" action="/admin/seal"><button class="btn primary">Lacrar eleição</button></form>{% endif %}
+          {% if election.state == 'CONFIG' %}<form method="post" action="/admin/seal"><button class="btn primary">Finalizar configuração e lacrar eleição</button></form>{% endif %}
           {% if election.state in ['SEALED','OPEN'] %}<span class="help-text">Controle operacional transferido para o Mesário</span>{% endif %}
           {% if election.zero_snapshot_json %}<a class="btn secondary" target="_blank" href="/reports/zero.pdf">Visualizar zerésima emitida</a>{% endif %}
           {% if election.final_tally_json %}<a class="btn success" target="_blank" href="/reports/result.pdf">Boletim final</a>{% endif %}

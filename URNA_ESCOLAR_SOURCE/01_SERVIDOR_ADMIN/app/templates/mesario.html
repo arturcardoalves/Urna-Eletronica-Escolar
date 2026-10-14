@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Mesa Eleitoral{% endblock %}
 {% block body %}
+<script src="/static/publication.js"></script>
 <div class="station-page" data-state="{{ election.state }}" data-identification="{{ '1' if election.voter_identification_enabled else '0' }}" data-lookup-mode="{{ election.voter_lookup_mode }}">
   <header class="station-header">
     <div class="station-brand"><span class="eyebrow light">MESA ELEITORAL</span><h1>{{ election.name }}</h1><p>{{ election.institution_name }}</p></div>
@@ -10,6 +11,7 @@
       <span id="stationStatePill" class="station-state station-state-{{ election.state|lower }}">{{ election.state }}</span>
     </div>
   </header>
+  <div id="publicationNotice" role="status" hidden style="padding:8px 16px;color:#143355;background:#eff6ff"></div>
   <div id="stationConnectionStatus" class="warning-box hidden" role="alert"></div>
 
   <div id="paperChangeAlert" class="paper-change-alert hidden" role="status" aria-live="polite">

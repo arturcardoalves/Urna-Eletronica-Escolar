@@ -15,6 +15,8 @@ def test_package_excludes_election_data_even_when_extension_looks_like_source(tm
         'URNA_ESCOLAR_SOURCE/01_SERVIDOR_ADMIN/data/private.db-wal': 'personal',
         'URNA_ESCOLAR_SOURCE/01_SERVIDOR_ADMIN/app/static/uploads/slates/photo.svg': 'personal',
         'installer/output/log.txt': 'runtime', '.build-venv/secret.py': 'runtime',
+        'portal/data/public.json': 'previous election', 'portal/cloudflare/trusted.json': 'trusted credentials',
+        'portal/backup.sql': 'election records',
         'tests/__pycache__/test.py': 'cache', 'old.zip': 'old',
     }
     for name, content in fixtures.items():
@@ -38,3 +40,22 @@ def test_package_rejects_embedded_private_key(tmp_path):
     path.write_text('-----BEGIN PRIVATE KEY-----\n' + 'A' * 40)
     with pytest.raises(ValueError, match='privados'):
         list(source_files(tmp_path))
+
+
+def test_documentation_capture_survives_packaging_without_allowing_election_photos(tmp_path):
+    approved = 'docs/imagens/urna-confirmacao.jpg'
+    forbidden = ['docs/imagens/aluno-real.jpg',
+                 'URNA_ESCOLAR_SOURCE/01_SERVIDOR_ADMIN/app/static/uploads/slates/urna-confirmacao.jpg',
+                 'URNA_ESCOLAR_SOURCE/01_SERVIDOR_ADMIN/data/urna-confirmacao.jpg']
+    for name in [approved, *forbidden]:
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b'\xff\xd8\xff\xd9')
+    (tmp_path / 'README.md').write_text('Documentation')
+    (tmp_path / 'installer').mkdir()
+    (tmp_path / 'installer/BUILD_WINDOWS.ps1').write_text('# build')
+    output = tmp_path / 'source.zip'
+    create_package(tmp_path, output)
+    with zipfile.ZipFile(output) as archive:
+        assert archive.read(approved) == b'\xff\xd8\xff\xd9'
+        assert all(name not in archive.namelist() for name in forbidden)

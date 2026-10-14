@@ -27,6 +27,7 @@ from .auth import create_session, current_user, get_db, require_role
 from .config import APP_VERSION, BASE_DIR, MAX_URNS, DB_PATH, PUBLIC_KEY_PATH, PRIVATE_KEY_PATH, PRIVATE_KEY_PASSWORD_PATH, DATA_DIR
 from .db import init_db
 from .models import Ballot, DevicePrintCommand, Election, ElectionArchive, ElectionState, Occurrence, Setting, Slate, SlateMember, Urn, UrnStatus, User, UserRole, Voter, VoterExceptionPermit, VoterStatus, VotingAuthorization, AnonymousVotingAuthorization, AuditEvent, LoginGuard, Session as LoginSession, UrnDeviceSession
+from . import publication
 from .reports import audit_log_pdf, final_result_pdf, occurrences_pdf, voter_list_pdf, zero_pdf
 from .security import canonical_json, hash_device_secret, hash_password, password_is_acceptable, random_token, sha256_text, verify_password
 from .tally_service import tally_closed_election, verify_final_tally_integrity
@@ -763,8 +764,11 @@ def set_urn_voting_mode(urn_id: int, voting_mode_override: str = Form("INHERIT")
 
 @app.post("/admin/seal")
 def seal(user: User = Depends(require_role(UserRole.ADMIN.value)), db: Session = Depends(get_db)):
-    domain_call(db, seal_election, user.username)
-    return RedirectResponse("/admin", status_code=303)
+    def seal_and_publish(db, actor):
+        seal_election(db, actor)
+        publication.prepare(db, "configuration", actor)
+    domain_call(db, seal_and_publish, user.username)
+    return RedirectResponse("/admin/publication", status_code=303)
 
 
 
@@ -938,6 +942,7 @@ def mesario_open_prepare(
         raise HTTPException(409, "Selecione a impressora destas urnas antes da abertura: " + ", ".join(missing))
 
     _ensure_zero_snapshot(db, user.username, "mesario_open")
+    publication.prepare(db, "zero", user.username)
     queued = _queue_device_document(db, "zero", lambda urn: _zero_thermal_text(db, urn), election.zero_copies)
     ticket = random_token(24)
     _ticket_setting(db, "mesario_open_ticket_hash", sha256_text(ticket))
@@ -996,6 +1001,7 @@ def mesario_close(
         private_key_bytes, key_password = load_internal_private_key()
         close_election(db, user.username)
         result = tally_closed_election(db, private_key_bytes, key_password, user.username)
+        publication.prepare(db, "result", user.username)
         queued = _queue_device_document(db, "result", lambda urn: _result_thermal_text(db, urn), election.result_copies)
         close_ticket = random_token(24)
         _ticket_setting(db, "mesario_close_ticket_hash", sha256_text(close_ticket))
@@ -1565,7 +1571,7 @@ def _result_thermal_text(db: Session, urn: Urn | None = None) -> str:
     # permanece agregado. Os totais por urna são produzidos durante a apuração
     # local, sem depender de módulo de publicação externo.
     urn_data = (data.get("per_urn") or {}).get(urn.code) if urn is not None else None
-    source = urn_data or data
+    source = (urn_data or {"total": 0, "blank": 0, "invalid": 0, "slates": []}) if urn is not None else data
     total = int(source.get("total", 0))
     result_by_number = {int(item.get("number", 0)): int(item.get("votes", 0)) for item in source.get("slates", [])}
     blank_count = int(source.get("blank", 0))
@@ -1729,7 +1735,7 @@ def _result_thermal_payload(db: Session, urn: Urn | None = None) -> dict:
     slates = db.execute(select(Slate).where(Slate.active == True).order_by(Slate.number)).scalars().all()
     urn_label = f"{urn.code} - {urn.name}" if urn else "URNA"
     urn_data = (data.get("per_urn") or {}).get(urn.code) if urn is not None else None
-    source = urn_data or data
+    source = (urn_data or {"total": 0, "blank": 0, "invalid": 0, "slates": []}) if urn is not None else data
     total = int(source.get("total", 0))
     result_by_number = {int(item.get("number", 0)): int(item.get("votes", 0)) for item in source.get("slates", [])}
     blank_count = int(source.get("blank", 0))
@@ -1749,6 +1755,7 @@ def _result_thermal_payload(db: Session, urn: Urn | None = None) -> dict:
         "closing": election.closed_at.strftime('%H:%M:%S') if election.closed_at else '—',
         "version": APP_VERSION,
         "registered": registered,
+        "identified": bool(election.voter_identification_enabled),
         "total": total,
         "absent": max(0, registered - total),
         "allow_blank": bool(election.allow_blank),
@@ -1785,6 +1792,9 @@ def _queue_device_document(db: Session, kind: str, text, copies: int = 1, urn_co
             layout = "result_receipt"
             paper = _result_thermal_payload(db, urn)
             title = f"Boletim de Urna - {urn.code}"
+
+        if paper is not None:
+            paper["publication"] = publication.qr_for(db, kind, urn)
 
         payload = json.dumps({
             "text": urn_text,
@@ -2067,3 +2077,6 @@ def health(db: Session = Depends(get_db)):
 
 from . import deployment
 deployment.register(app, templates)
+
+from .publication_routes import register as register_publication
+register_publication(app, templates)

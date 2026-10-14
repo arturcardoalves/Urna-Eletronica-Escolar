@@ -124,9 +124,10 @@ try {
     Run-Native -Exe $Py -CommandArgs @('-m','pip','install','-r',(Join-Path $Root 'URNA_ESCOLAR_SOURCE\01_SERVIDOR_ADMIN\requirements.txt'))
     Run-Native -Exe $Py -CommandArgs @('-m','pip','install','-r',(Join-Path $Root 'URNA_ESCOLAR_SOURCE\03_URNA\print_agent\requirements.txt'))
     Run-Native -Exe $Py -CommandArgs @('-m','pip','install','-r',(Join-Path $PSScriptRoot 'requirements-build.txt'))
-    Run-Native -Exe $Py -CommandArgs @('-m','compileall','-q',(Join-Path $Root 'URNA_ESCOLAR_SOURCE'),(Join-Path $Root 'installer'))
+    Run-Native -Exe $Py -CommandArgs @('-m','compileall','-q',(Join-Path $Root 'URNA_ESCOLAR_SOURCE'),(Join-Path $Root 'installer'),(Join-Path $Root 'portal'),(Join-Path $Root 'transmitter'))
 
     Run-Native -Exe $Py -CommandArgs @('-m','pytest','-q',(Join-Path $Root 'tests'),'--junitxml=test-results/windows-tests.xml')
+    Run-Native -Exe 'node' -CommandArgs @('--test',(Join-Path $Root 'tests/test_frontend.js'),(Join-Path $Root 'tests/test_publication_js.js'))
 
     Write-Host '[3/9] Limpando builds anteriores...' -ForegroundColor Yellow
     Remove-BuildDirectory 'build'
@@ -134,7 +135,8 @@ try {
     Remove-BuildDirectory 'installer\output'
     $env:URNA_BUILD_ROOT = $Root
     # Smoke tests use disposable data, never the school's actual database.
-    $env:URNA_BUILD_DATA_DIR = Join-Path $Root 'test-results\runtime\UrnaEscolar'
+    $RuntimeTestId = [Guid]::NewGuid().ToString('N')
+    $env:URNA_BUILD_DATA_DIR = Join-Path $Root ("test-results\runtime\$RuntimeTestId\UrnaEscolar")
 
     Write-Host '[4/9] Gerando e testando UrnaEscolarServidor.exe...' -ForegroundColor Yellow
     Run-Native -Exe $Py -CommandArgs @('-m','PyInstaller','--clean','--noconfirm',(Join-Path $PSScriptRoot 'server.spec'))
@@ -166,7 +168,8 @@ try {
     }
     Write-Host '[7/9] Preparando proteção de atualização...' -ForegroundColor Yellow
     Run-Native -Exe $Py -CommandArgs @('-m','PyInstaller','--clean','--noconfirm',(Join-Path $PSScriptRoot 'upgrade_guard.spec'))
-    Write-Host '[8/9] Executáveis prontos.' -ForegroundColor Green
+    Write-Host '[8/9] Gerando e testando Transmissor Eleitoral...' -ForegroundColor Yellow
+    Run-Native -Exe 'powershell.exe' -CommandArgs @('-NoProfile','-ExecutionPolicy','Bypass','-File',(Join-Path $PSScriptRoot 'BUILD_TRANSMITTER.ps1'))
 
     Write-Host '[9/9] Gerando instalador com Inno Setup...' -ForegroundColor Yellow
     $Candidates = @('C:\Program Files (x86)\Inno Setup 6\ISCC.exe','C:\Program Files\Inno Setup 6\ISCC.exe')
@@ -195,17 +198,27 @@ try {
         Remove-Item Env:PYTHONPATH -ErrorAction SilentlyContinue
         if (Get-Command python.exe -ErrorAction SilentlyContinue) { Fail 'Python externo continua no PATH do teste.' }
         $Installed = Join-Path $env:ProgramFiles 'Urna Escolar Teste 230'
-        foreach ($Role in @('central','urna')) {
+        foreach ($Role in @('publicacao','central','urna')) {
             $InstallArgs = @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',"/ROLE=$Role",('/DIR="' + $Installed + '"'),('/LOG="' + (Join-Path $Root "test-results\install-$Role.log") + '"'))
             $Install = Start-Process -FilePath $InstallerExe -ArgumentList $InstallArgs -PassThru -Wait -WindowStyle Hidden
             if ($Install.ExitCode -ne 0) { Fail "Instalacao do papel $Role falhou: $($Install.ExitCode)" }
             $ActualRole = Get-Content (Join-Path $env:ProgramData 'UrnaEscolar\role.json') -Raw | ConvertFrom-Json
             if ($ActualRole.role -ne $Role) { Fail 'Papel instalado incorreto.' }
-            $Check = Start-Process -FilePath (Join-Path $Installed 'Aplicativo\UrnaEscolar.exe') -ArgumentList '--self-test' -PassThru -Wait -WindowStyle Hidden
+            if ($Role -eq 'publicacao') {
+                if ((Test-Path (Join-Path $Installed 'Aplicativo\UrnaEscolar.exe')) -or (Test-Path (Join-Path $Installed 'Servidor\UrnaEscolarServidor.exe'))) { Fail 'Instalacao limpa de publicacao incluiu runtime de votacao.' }
+                $InstalledExe = Join-Path $Installed 'Publicacao\TransmissorEleitoral.exe'
+                $AutoStart = Get-ItemProperty -LiteralPath 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'UrnaEscolar' -ErrorAction SilentlyContinue
+                if ($AutoStart) { Fail 'A publicacao nao deve iniciar o aplicativo de votacao automaticamente.' }
+                $ShortcutPath = Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'Publicação de Resultados.lnk'
+                if (-not (Test-Path -LiteralPath $ShortcutPath)) { Fail 'Atalho da publicacao nao foi criado.' }
+                $ShortcutShell = New-Object -ComObject WScript.Shell
+                if ($ShortcutShell.CreateShortcut($ShortcutPath).TargetPath -ne $InstalledExe) { Fail 'Atalho da publicacao aponta para aplicativo incorreto.' }
+            } else { $InstalledExe = Join-Path $Installed 'Aplicativo\UrnaEscolar.exe' }
+            $Check = Start-Process -FilePath $InstalledExe -ArgumentList '--self-test' -PassThru -Wait -WindowStyle Hidden
             if ($Check.ExitCode -ne 0) { Fail 'Aplicativo instalado nao passou no self-test.' }
             if ($Role -eq 'central' -and -not (Wait-Server (Join-Path $Installed 'Servidor\UrnaEscolarServidor.exe'))) { Fail 'Servidor instalado nao iniciou.' }
         }
-        'Instalador executado nos dois papeis. Runtime testado sem Python externo no PATH. Impressora fisica e dois PCs: pendentes.' | Set-Content (Join-Path $Root 'test-results\windows-smoke.txt') -Encoding UTF8
+        'Instalador executado nos tres papeis. Runtime testado sem Python externo no PATH. Impressora fisica e dois PCs: pendentes.' | Set-Content (Join-Path $Root 'test-results\windows-smoke.txt') -Encoding UTF8
     } finally {
         $env:PATH = $SavedPath
         $env:PYTHONHOME = $SavedPythonHome

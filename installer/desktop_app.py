@@ -338,6 +338,22 @@ class Desktop:
                     for urn in status["urns"]:
                         lines.append(urn["code"]+": "+("conectada" if urn["connected"] else "desconectada")+" • Impressora: "+("configurada e disponível no Windows" if urn["printer_ready"] else "verificar no computador da urna")+" • "+{"PRINTING":"imprimindo","PRINT_ERROR":"impressão requer mesário","IN_USE":"em votação","AVAILABLE":"livre"}.get(urn["status"],urn["status"]))
                     self.emit("devices","\n".join(lines) if lines else "Nenhuma urna conectada. Use Conectar computador da urna.")
+                    # Only the authenticated local control channel can write removable media.
+                    # Export failures never change the server/voting readiness above.
+                    try:
+                        publication = api.request("/api/local/publication")
+                        if publication["pending"]:
+                            media = publication["drives"]
+                            if len(media) == 1:
+                                exported = api.request("/api/local/publication/export", {"drive": media[0]})
+                                self.emit("notice", f"{len(exported['files'])} documento(s) exportado(s). Ejete a mídia com segurança e use o Transmissor Eleitoral no PC com internet.")
+                            elif len(media) > 1:
+                                self.emit("notice", "Há várias mídias USB. Selecione o destino em Administração > Publicação e mídia USB.")
+                            else:
+                                self.emit("notice", "Insira a mídia USB para exportar a Zerésima" if "zero" in publication["kinds"] else "Insira a mídia USB para exportar os documentos eleitorais assinados.")
+                    except Exception as exc:
+                        self.emit("notice", "Exportação pendente: " + str(exc))
+
                 else:
                     cfg=dict(self.config)
                     printer=cfg.get("printer","");mode=cfg.get("mode","windows")

@@ -38,7 +38,7 @@
     <path d="M681 238a19 19 0 0 1 38 0v15h-38z" fill="none" stroke="#fff" stroke-width="4"/>
     <rect x="676" y="237" width="48" height="34" rx="6" fill="#fff"/>
     <circle cx="700" cy="253" r="4" fill="#155eef"/>
-    <text x="700" y="319" text-anchor="middle" fill="#143355" font-size="27" font-weight="700">Rede local segura</text>
+    <text x="700" y="319" text-anchor="middle" fill="#143355" font-size="27" font-weight="700">Rede local dedicada</text>
     <text x="700" y="356" text-anchor="middle" fill="#52657a" font-size="18">HTTPS + código de vínculo</text>
     <text x="700" y="385" text-anchor="middle" fill="#52657a" font-size="18">Funciona sem internet</text>
 
@@ -47,7 +47,7 @@
     <circle cx="1145" cy="221" r="4" fill="#fff"/>
     <text x="1145" y="277" text-anchor="middle" fill="#143355" font-size="27" font-weight="700">Urna + Impressora</text>
     <text x="1145" y="315" text-anchor="middle" fill="#52657a" font-size="18">Recebe a autorização</text>
-    <text x="1145" y="344" text-anchor="middle" fill="#52657a" font-size="18">Registra o voto sigiloso</text>
+    <text x="1145" y="344" text-anchor="middle" fill="#52657a" font-size="18">Registra a escolha</text>
     <text x="1145" y="373" text-anchor="middle" fill="#52657a" font-size="18">Imprime a ficha física</text>
     <rect x="1035" y="405" width="220" height="38" rx="19" fill="#e8f7f0"/>
     <text x="1145" y="431" text-anchor="middle" fill="#176b46" font-size="16" font-weight="700">COMPUTADOR 2</text>

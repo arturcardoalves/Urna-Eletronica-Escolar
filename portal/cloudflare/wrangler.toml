@@ -1,0 +1,23 @@
+name = "urna-escolar-portal"
+main = "src/worker.js"
+compatibility_date = "2026-10-13"
+workers_dev = true
+
+[build]
+command = "node generate-validator.mjs"
+
+[assets]
+directory = "../static"
+binding = "ASSETS"
+run_worker_first = ["/", "/elections/*", "/documents/*", "/verify", "/api/*", "/health"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "urna-escolar-publicacoes"
+database_id = "afd45fdb-b6a8-465e-bdf5-852d8014cbbc"
+migrations_dir = "migrations"
+
+[observability]
+enabled = false
+
+# TRUST_REGISTRY is a Wrangler secret, never a tracked file or public asset.

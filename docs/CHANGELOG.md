@@ -2,6 +2,15 @@
 
 Este arquivo registra somente versões e alterações que podem ser comprovadas pelo código e pelos documentos preservados no repositório.
 
+## Revisão de 12/10/2026 — código 2.3.0
+
+- Confirmação por mouse em cartão compacto centralizado; CORRIGIR vermelho.
+- Cadastro com nome/turma obrigatórios e matrícula/turno opcionais.
+- Som sempre habilitado e aviso de impressão na própria tela FIM/VOTOU.
+- README renovado, quatro capturas oficiais com dados fictícios e guias de dúvidas e validação.
+- Inclusão controlada das capturas no pacote de fontes; fotos eleitorais continuam excluídas.
+- Essas mudanças mantêm o número 2.3.0; confira o commit e a data do build ao baixar o instalador.
+
 ## 2.3.0 — versão atual
 
 ### Aplicação e instalação
@@ -9,7 +18,7 @@ Este arquivo registra somente versões e alterações que podem ser comprovadas 
 - Instalador único para **Central + Mesa Eleitoral** ou **Urna + impressora USB**.
 - Aplicativo Windows único para iniciar, acompanhar e diagnosticar cada papel.
 - Limpeza de builds, ambientes virtuais, caches, lançadores HTA/BAT e assistentes antigos que não participavam da compilação atual.
-- Build reproduzível no GitHub Actions com Python 3.13, testes e artefato do instalador.
+- Build automatizado no GitHub Actions com Python 3.13, testes e artefato do instalador.
 
 ### Rede e segurança
 
@@ -36,7 +45,7 @@ Este arquivo registra somente versões e alterações que podem ser comprovadas 
 
 ### Testes
 
-- 38 testes automatizados no repositório.
+- Suíte automatizada com resultados por execução; consulte [Testes e validação](TESTES_E_VALIDACAO.md).
 - Cobertura de votação, concorrência, autenticação, vínculo, TLS, impressão, recuperação, atualização e modos do navegador.
 
 ## 2.2.1 — versão legada
@@ -46,3 +55,12 @@ Este arquivo registra somente versões e alterações que podem ser comprovadas 
 - Os arquivos antigos de geração do EXE foram retirados quando suas funções passaram para `installer/BUILD_WINDOWS.ps1`, o aplicativo unificado e o workflow do GitHub.
 
 Não há garantia de compatibilidade de bancos ou instaladores antigos fora dos procedimentos de atualização descritos na versão 2.3.0.
+# Publicação offline e portal — 13/10/2026
+
+- Configuração pública vinculada à lacração, chave Ed25519 por eleição e pacotes assinados sem dados individuais de eleitores.
+- Zerésima/BU por urna com PDFs públicos e dois QR Codes; exportação automática para uma mídia USB e reexportação idêntica.
+- Transmissor Eleitoral Windows independente, verificação offline, confirmação do operador, HTTPS e comprovante idempotente.
+- Portal Cloudflare Workers + D1 preparado para plano gratuito, arquivo de eleições, parcial/definitivo, versões e verificação pública.
+- Correção do BU de urna sem votos: mantém zero, sem herdar o resultado agregado de outras urnas.
+- Testes de assinatura, adulteração, transmissão HTTPS, recuperação de resposta perdida, mídia, concorrência e integração; validação local Workers/D1.
+- Hospedagem externa e impressão física permanecem sujeitas à configuração e ensaio documentados.

@@ -70,8 +70,8 @@ if __name__=="__main__":
     result=Path(sys.argv[1])
     try:
         import psutil
-        if any(p.info['name'] and p.info['name'].lower() in ('urnaescolar.exe', 'urnaescolarservidor.exe') for p in psutil.process_iter(['name'])):
-            raise RuntimeError("Feche a Central e a Urna antes de atualizar para que o backup seja feito sem alterações em andamento.")
+        if any(p.info['name'] and p.info['name'].lower() in ('urnaescolar.exe', 'urnaescolarservidor.exe', 'transmissoreleitoral.exe') for p in psutil.process_iter(['name'])):
+            raise RuntimeError("Feche a Central, a Urna e o Transmissor Eleitoral antes de atualizar para que nenhum arquivo seja substituído durante votação ou transmissão.")
         check_and_backup(Path(os.environ["PROGRAMDATA"])/"UrnaEscolar")
         result.write_text("OK",encoding="utf-8")
     except Exception as exc:

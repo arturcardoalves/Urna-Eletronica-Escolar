@@ -1,205 +1,253 @@
 <div align="center">
 
+<img src="docs/imagens/capa.svg" alt="Urna Escolar — uma eleição organizada, do cadastro à apuração" width="100%">
+
 # Urna Eletrônica Escolar
 
-### Sistema local para organizar eleições estudantis com dois computadores e ficha de voto impressa
+**Da lista de alunos ao boletim final, na rede da própria escola.**
+
+Votação por mouse ou teclado · Ficha impressa · Operação sem internet
 
 [![Build Windows](https://github.com/arturcardoalves/Urna-Eletronica-Escolar/actions/workflows/build-windows-installer.yml/badge.svg)](https://github.com/arturcardoalves/Urna-Eletronica-Escolar/actions/workflows/build-windows-installer.yml)
-![Versão](https://img.shields.io/badge/vers%C3%A3o-2.3.0-155eef)
-![Windows](https://img.shields.io/badge/Windows-10%20%7C%2011-0078d4?logo=windows)
-![Python](https://img.shields.io/badge/Python-3.13-3776ab?logo=python&logoColor=white)
-![Uso](https://img.shields.io/badge/uso-educacional-176b46)
+![Versão do código](https://img.shields.io/badge/c%C3%B3digo-2.3.0-176b46)
+![Plataforma](https://img.shields.io/badge/plataforma-Windows%20x64-155eef)
+![Uso](https://img.shields.io/badge/uso-educacional-334155)
 
-[Instalação e uso](docs/GUIA_2.3.0.md) · [Resetar dados de teste](docs/RESETAR_SISTEMA.md) · [Gerar o instalador](docs/GERAR_EXE_NO_GITHUB.md) · [Segurança](SEGURANCA.md) · [Versões](docs/CHANGELOG.md)
+**[Baixar instalador](https://github.com/arturcardoalves/Urna-Eletronica-Escolar/actions/workflows/build-windows-installer.yml)** · **[Começar a usar](docs/GUIA_2.3.0.md)** · **[Ver as telas](docs/TELAS.md)**
+
+[Instalação](#instalacao) · [Rede](#rede) · [Impressora](#impressora) · [Segurança](#seguranca) · [Testes](#testes) · [Dúvidas](docs/PERGUNTAS_FREQUENTES.md)
 
 </div>
 
-![Visão geral da Urna Eletrônica Escolar](docs/imagens/visao-geral.svg)
+## Uma eleição, três papéis
 
-## Sobre o projeto
+A **Urna Eletrônica Escolar** foi criada para organizar eleições de grêmio estudantil. A comissão prepara a eleição, o mesário libera cada aluno e o eleitor escolhe sua chapa na cabine. Ao final, a equipe confere os resultados e os documentos emitidos.
 
-A **Urna Eletrônica Escolar** ajuda escolas a realizar eleições de grêmio, representantes de turma e outras consultas estudantis em uma rede local. O sistema separa a operação em dois computadores Windows:
+| Administração | Mesa Eleitoral | Urna de votação |
+|---|---|---|
+| Configura a eleição, cadastra chapas e alunos e gerencia os acessos. | Identifica o aluno, libera a votação e acompanha ocorrências. | Mostra as chapas, permite conferir e corrigir a escolha e imprime a ficha. |
+| No computador da Central. | No computador da Central, com acesso próprio. | No computador da cabine, com a impressora USB. |
 
-- **Central + Mesa Eleitoral:** configura a eleição, cadastra chapas e eleitores, autoriza cada votação e acompanha as urnas.
-- **Urna de Votação:** recebe a liberação da Mesa, mostra as opções ao eleitor e imprime a ficha física em uma impressora USB.
+**Para quem é:** escolas e equipes que organizam eleições estudantis. O projeto está em desenvolvimento e validação; o uso exige preparação e um ensaio completo nos equipamentos da escola. Não é um sistema eleitoral oficial certificado.
 
-O mesmo instalador `Instalar_Urna_Escolar_2.3.0.exe` atende os dois computadores. Durante a instalação, o responsável escolhe qual papel aquele equipamento terá.
+<a id="telas"></a>
 
-> [!IMPORTANT]
-> Este é um projeto educacional para eleições escolares. Ele não é uma urna oficial, não possui hardware eleitoral certificado e não deve ser apresentado como substituto de sistemas oficiais de votação.
+## Veja a votação por mouse
 
-## Como funciona
-
-```mermaid
-flowchart LR
-    subgraph PC1[Computador 1]
-        A[Administração] --> B[Central da Eleição]
-        M[Mesa Eleitoral] --> B
-        B --> D[(Banco local)]
-    end
-
-    subgraph REDE[Rede local isolada]
-        H[HTTPS com certificado próprio]
-    end
-
-    subgraph PC2[Computador 2]
-        U[Urna de Votação] --> P[Impressora USB]
-    end
-
-    B <--> H <--> U
-```
-
-1. A escola instala o mesmo EXE nos dois computadores e escolhe o papel de cada um.
-2. Os computadores são ligados por cabo às portas LAN do mesmo roteador, com DHCP habilitado.
-3. A Central cadastra a eleição, chapas, integrantes, eleitores e usuários da Mesa.
-4. A Urna localiza a Central automaticamente. O vínculo exige aprovação e comparação de um código nos dois computadores.
-5. A Mesa autoriza um eleitor por vez. A Urna recebe somente a autorização necessária para aquela votação.
-6. O eleitor confirma o voto. O sistema registra o voto sem nome ou matrícula e envia a ficha para a impressora da Urna.
-7. Na abertura e no encerramento são produzidos documentos de conferência, como zerésima e boletim de urna.
-
-## Interfaces
-
-As imagens abaixo representam a interface atual do aplicativo Windows. Mesa, Administração e tela de votação são abertas no Microsoft Edge em modo **Normal**, **Tela cheia** ou **Quiosque**.
+Capturas da **interface oficial do projeto**, com nomes e chapas fictícios. Foram produzidas em uma prévia isolada usando os arquivos reais de interface. A autorização e a resposta da impressora foram simuladas; as imagens não comprovam uma impressão física.
 
 <table>
   <tr>
-    <td width="50%"><img src="docs/imagens/painel-central.svg" alt="Painel da Central da Eleição"></td>
-    <td width="50%"><img src="docs/imagens/painel-urna.svg" alt="Painel da Urna de Votação"></td>
+    <td width="50%"><a href="docs/imagens/urna-aguardando.jpg"><img src="docs/imagens/urna-aguardando.jpg" alt="Urna aguardando liberação do eleitor pela Mesa"></a></td>
+    <td width="50%"><a href="docs/imagens/urna-escolha.jpg"><img src="docs/imagens/urna-escolha.jpg" alt="Eleitor escolhe uma das chapas pelo mouse ou vota em branco"></a></td>
   </tr>
   <tr>
-    <td align="center"><strong>Central da Eleição</strong><br>Servidor, Administração, Mesa e conexão das urnas.</td>
-    <td align="center"><strong>Urna de Votação</strong><br>Conexão, impressora, margem de corte e abertura da cabine.</td>
+    <td><strong>01 · Aguarde a liberação</strong><br>A Mesa identifica o aluno e libera a cabine.</td>
+    <td><strong>02 · Escolha uma chapa</strong><br>Clique na opção desejada ou em BRANCO, quando permitido.</td>
+  </tr>
+  <tr>
+    <td><a href="docs/imagens/urna-confirmacao.jpg"><img src="docs/imagens/urna-confirmacao.jpg" alt="Cartão compacto centralizado com CORRIGIR vermelho e CONFIRMAR verde"></a></td>
+    <td><a href="docs/imagens/urna-impressao.jpg"><img src="docs/imagens/urna-impressao.jpg" alt="Tela FIM e VOTOU com aviso discreto Imprimindo seu voto"></a></td>
+  </tr>
+  <tr>
+    <td><strong>03 · Confira antes de confirmar</strong><br>O botão vermelho permite corrigir. O verde confirma o voto.</td>
+    <td><strong>04 · Aguarde a ficha</strong><br>O aviso de impressão permanece na própria tela de conclusão.</td>
   </tr>
 </table>
 
-## Principais características
+**[Abrir o passeio completo pelas telas →](docs/TELAS.md)**
 
-| Área | Recursos |
+## Publicação pública sem conectar a eleição à internet
+
+A Central assina a configuração, a zerésima e o BU de cada urna. Um pendrive leva os pacotes ao **Transmissor Eleitoral**, que confere a chave e solicita confirmação antes de enviar ao portal.
+
+O mesmo instalador oferece **três funções**: Central/Administrador/Mesa, Urna e **Publicação de resultados**. No computador com internet, escolha a terceira opção e abra o atalho **Publicação de Resultados** para usar o Transmissor Eleitoral.
+
+O portal pode funcionar gratuitamente com **GitHub + Cloudflare Workers/D1**, no endereço HTTPS `workers.dev`. Mostra chapas, PDFs, resultados por urna, pendências, totalização parcial/definitiva e histórico de versões. As urnas continuam funcionando sem internet, mesmo quando o portal está indisponível.
+
+Os dois QR Codes permitem consulta pública e conferência criptográfica. Para reconhecer o emissor, compare a impressão digital da chave com a referência da comissão. Dados pessoais dos eleitores e votos individuais não fazem parte dos pacotes.
+
+**[Operar publicação por pendrive](docs/PUBLICACAO_E_PORTAL.md)** · **[Configurar Cloudflare gratuito](docs/PORTAL_CLOUDFLARE.md)** · **[Conferir assinaturas e entender limites](docs/PROTOCOLO_PUBLICACAO.md)**
+
+![Prévia do portal Cloudflare, conferida localmente com dados fictícios](docs/imagens/portal-publico.png)
+
+*Captura do Worker real em ambiente local de teste. As eleições fictícias usadas na validação não são carregadas na produção.*
+
+## O que o sistema oferece
+
+| Recurso | Na prática |
 |---|---|
-| Administração | Configuração da eleição, chapas, integrantes, eleitores, turmas, turnos e usuários |
-| Mesa Eleitoral | Autorização individual, acompanhamento das urnas e intervenção em falhas de impressão |
-| Votação | Interface simples, confirmação do voto, votos em branco quando habilitados e bloqueio de repetição |
-| Impressão | Ficha em papel de 80 mm, zerésima, boletim de urna, modo Driver Windows ou ESC/POS |
-| Corte | Margem configurável de 10 a 80 mm, padrão de 30 mm e teste de ficha/assinaturas |
-| Operação | Abertura Normal, Tela cheia ou Quiosque para Mesa e Urna |
-| Rede | Descoberta automática na LAN, reconexão quando o IP muda e funcionamento sem internet |
-| Auditoria | Hashes de configuração, cadeia de votos, documentos de conferência e registros operacionais |
-| Recuperação | Diário contra impressão duplicada, reimpressão somente autorizada e backup em atualização |
-| Acessibilidade | Fonte Atkinson Hyperlegible e botões grandes para operação escolar |
+| Cadastro simplificado | Nome e turma são obrigatórios. Matrícula e turno são opcionais. Importação por CSV ou XLSX. |
+| Duas formas de votar | Escolha visual por mouse/toque ou digitação do número da chapa pelo teclado. |
+| Conferência da escolha | Cartão centralizado, CORRIGIR vermelho, CONFIRMAR verde e voto em branco configurável. |
+| Som de conclusão | Sempre habilitado pelo sistema; o volume do Windows e as permissões de áudio do navegador continuam valendo. |
+| Modos de abertura | Normal, Tela cheia e Quiosque para Mesa e Urna. |
+| Documentos da eleição | Zerésima, boletim de urna e relatórios para conferência. |
+| Impressão local | Driver Windows ou ESC/POS compatível, teste de ficha/assinaturas e ajuste antes do corte. |
+| Recuperação | Tratamento de desconexão e de impressão incerta, com intervenção da Mesa. |
+| Histórico | Arquivamento da eleição encerrada e preparação de uma nova eleição. |
 
-## Segurança e privacidade
+<a id="instalacao"></a>
 
-| Controle | Como é aplicado |
-|---|---|
-| Comunicação | HTTPS na porta 8443 com autoridade certificadora criada pela própria instalação |
-| Vínculo | Aprovação administrativa e código de verificação ligado ao certificado da Central |
-| Rede | Regras de firewall limitadas à sub-rede local; uso recomendado sem internet e sem Wi-Fi |
-| Credencial da Urna | Protegida pelo Windows para o usuário local atual |
-| Sigilo | O voto armazenado não contém nome, matrícula ou horário do eleitor |
-| Impressão | O diário guarda identificadores opacos e estados, sem registrar a escolha impressa |
-| Integridade | Hashes e cadeia de auditoria ajudam a identificar alterações nos dados |
-| Atualização | Bloqueada durante eleição lacrada ou aberta; backup criado antes da substituição |
+## Instalar e começar
 
-Segurança também depende do ambiente físico. Restrinja contas administrativas, guarde os computadores e comprovantes, mantenha data e hora corretas e realize uma eleição completa de teste. Consulte [SEGURANCA.md](SEGURANCA.md) para limites e recomendações.
+### Separe os equipamentos
 
-## Requisitos
+- Dois computadores com **Windows 10/11 de 64 bits** e Microsoft Edge.
+- Roteador com DHCP ativo, duas portas LAN e cabos de rede.
+- Impressora USB no computador da Urna, driver instalado e papel compatível. O fluxo térmico usa papel de **80 mm**.
+- Fontes **Atkinson Hyperlegible Regular e Bold** instaladas nos dois computadores.
+- Permissão de administrador do Windows para instalar. O uso diário pode ser feito pela conta normal.
 
-- Dois computadores com Windows 10 ou Windows 11 de 64 bits.
-- Microsoft Edge instalado nos dois computadores.
-- Um roteador com DHCP e duas portas LAN; internet não é necessária durante a eleição.
-- Cabos de rede para os dois computadores.
-- Impressora USB instalada somente no computador da Urna.
-- Papel compatível com a impressora; o projeto usa layouts de 80 mm.
-- Fontes Atkinson Hyperlegible Regular e Bold.
-- Conta com permissão de administrador apenas para instalar e configurar firewall/certificado.
+O instalador inclui o ambiente necessário: **não é preciso instalar Python para usar o sistema**. Internet é necessária para baixar o instalador e preparar Edge, fontes e driver quando ainda não estiverem disponíveis. Depois da preparação, a votação funciona na rede local.
 
-## Instalação rápida
+### Baixe o arquivo certo
 
-1. Baixe o artefato **Instalador-Urna-Escolar-2.3.0** na execução aprovada do [GitHub Actions](https://github.com/arturcardoalves/Urna-Eletronica-Escolar/actions).
-2. No primeiro computador, execute o EXE e escolha **Central da Eleição + Mesa Eleitoral**.
-3. No segundo, execute o mesmo EXE e escolha **Urna de votação + impressora USB**.
-4. Ligue os dois computadores ao mesmo roteador e abra a Central.
-5. Na Central, permita a conexão; na Urna, procure a Central e compare os códigos.
-6. Selecione a impressora na Urna, ajuste a margem de corte e execute o teste completo.
-7. Faça uma eleição de teste antes de cadastrar ou lacrar a eleição real.
+1. Entre no GitHub e abra [Actions → Build Windows Installer](https://github.com/arturcardoalves/Urna-Eletronica-Escolar/actions/workflows/build-windows-installer.yml).
+2. Escolha uma execução concluída com sucesso, conferindo o commit que contém a atualização desejada.
+3. Em **Artifacts**, baixe **Instalador-Urna-Escolar-2.3.0** e extraia o ZIP.
+4. Execute **Instalar_Urna_Escolar_2.3.0.exe**.
 
-O procedimento completo está no [Guia de instalação e uso](docs/GUIA_2.3.0.md).
+O download de artefatos exige uma sessão no GitHub e acesso de leitura ao repositório. [Instruções oficiais do GitHub](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts).
 
-## Versões
+**Qual arquivo escolher?** O instalador é o programa para usar. “Fonte Limpa” contém código para manutenção. “Logs-instalacao” contém registros para investigar problemas. “Download ZIP”, no botão Code, também baixa código; não entrega o instalador pronto.
 
-| Versão | Situação | Destaques |
+### Configure os dois computadores
+
+| Etapa | Central + Mesa | Urna + impressora |
 |---|---|---|
-| **2.3.0** | Atual | Instalador unificado, impressão nativa, HTTPS corrigido, modos Normal/Tela cheia/Quiosque, ajuste de corte e pacote limpo |
-| **2.2.1** | Legada | Base anterior com lançadores e processos separados; os documentos e scripts antigos foram substituídos pelo fluxo unificado |
+| 1. Instalar | Escolha **Central da Eleição + Mesa Eleitoral**. | Escolha **Urna de votação + impressora USB**. |
+| 2. Abrir | Aguarde **Servidor ativo — HTTPS verificado**. | Abra o aplicativo da Urna. |
+| 3. Primeiro acesso | Clique **Abrir administração**, crie o ADMIN e depois o usuário MESÁRIO. | Clique **Procurar Central**. |
+| 4. Vincular | Permita conexão por 5 minutos e confira o código. | Compare o código e conclua somente se corresponder. |
+| 5. Preparar | Cadastre a eleição, chapas e alunos. | Configure a impressora, a margem e execute o teste completo. |
+| 6. Ensaiar | Confira os cadastros, lacre e faça a abertura com zerésima. | Vote com dados fictícios e confira o papel. |
 
-As alterações conhecidas estão registradas em [docs/CHANGELOG.md](docs/CHANGELOG.md). O projeto ainda não possui uma tag de release; a versão confiável deve vir de uma execução aprovada do workflow.
+**O primeiro administrador é criado no próprio computador da Central**, pelo botão do aplicativo. Não há senha universal. A senha deve ter pelo menos 10 caracteres.
 
-## Gerar o instalador
+**[Guia completo, com abertura, encerramento e solução de problemas →](docs/GUIA_2.3.0.md)**
 
-O workflow oficial usa Windows e Python 3.13, instala as dependências fixadas, executa os testes e publica o instalador como artefato:
+<a id="rede"></a>
 
-1. Envie o código para a branch `main`.
-2. Abra **Actions → Build Windows Installer**.
-3. Aguarde todas as etapas ficarem verdes.
-4. Baixe **Instalador-Urna-Escolar-2.3.0**.
-5. Extraia `Instalar_Urna_Escolar_2.3.0.exe` e confira o hash SHA-256.
+## Rede: precisa configurar IP?
 
-Para compilar localmente, com Python 3.13 x64 e Inno Setup 6:
+Em um roteador comum **com DHCP ativo**, os endereços são atribuídos automaticamente. Ligue os dois computadores por cabo às portas **LAN do mesmo roteador** e mantenha a Central aberta. O aplicativo procura e vincula a Central; normalmente não é necessário digitar um IP fixo.
 
-```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\installer\BUILD_WINDOWS.ps1
-```
+![Central, rede local e Urna com impressora](docs/imagens/visao-geral.svg)
 
-Saída: `installer/output/Instalar_Urna_Escolar_2.3.0.exe`. Veja [GERAR_EXE_NO_GITHUB.md](docs/GERAR_EXE_NO_GITHUB.md) para os comandos de envio, download e hash.
+| Situação | O que fazer |
+|---|---|
+| Windows mostra “Sem internet” | Isso pode ser normal: a eleição precisa da rede local, não de acesso à internet. Confira se a Urna conecta à Central. |
+| Computadores na rede de convidados | Use uma rede que permita comunicação entre os dois equipamentos. Isolamento entre clientes impede o vínculo. |
+| Cabo direto entre os dois PCs, sem roteador | É outro cenário: pode exigir configuração manual. O procedimento documentado usa roteador com DHCP. |
+| A Central não aparece | Confira cabos, mesma rede, Central aberta e janela de vínculo. Peça apoio da TI em redes escolares gerenciadas. |
 
-Para criar um pacote de código sem bancos, chaves, fotos de eleitores, caches ou saídas de compilação, use o gerador verificado:
+Para a eleição, prefira uma rede dedicada, com acesso físico controlado e sem ligação com a internet. Não faça redirecionamento de portas para a internet. A comunicação usa **TCP 8443** e a descoberta **UDP 38443**; o instalador cria regras limitadas à sub-rede local.
 
-```powershell
-New-Item -ItemType Directory -Force .\release-output
-python .\installer\package_source.py --output .\release-output\Urna_Escolar_2.3.0_Fonte_Limpa.zip
-```
+<a id="impressora"></a>
 
-O script confere o conteúdo do ZIP, grava um manifesto SHA-256 interno e cria o arquivo `.sha256.txt`. Ele não apaga nem altera os dados existentes fora da cópia distribuída.
+## Impressora: confira antes do primeiro voto
 
-## Estrutura do repositório
+A impressora fica **conectada por USB ao computador da Urna**. Comece pelo modo **Driver Windows**; use **ESC/POS** somente se a impressora for compatível e passar no teste físico.
+
+1. Selecione a impressora no aplicativo da Urna.
+2. Comece com **30 mm de espaço em branco antes do corte**. O ajuste permite **10 a 80 mm**.
+3. Execute **Imprimir teste completo de ficha, assinaturas e corte**.
+4. Confira as duas amostras: texto completo, três assinaturas e corte depois do conteúdo.
+5. Se necessário, aumente a margem e repita o teste. Ela vale para todas as impressões seguintes daquela Urna.
+
+> **Se o voto não for impresso:** um voto já registrado não é desfeito pela falha da impressora. Chame o mesário, confira papel/cabo/driver e resolva a pendência pela Mesa. Não libere outro voto para “compensar”. Uma reimpressão repete a ficha do voto existente; não deve criar outro voto.
+
+A impressão incerta não é repetida automaticamente. Recolha e controle cópias parciais ou duplicadas. “Enviado à impressora” não comprova que o papel saiu: o equipamento pode aceitar o trabalho mesmo sem papel. [Leia o procedimento de falha e recuperação](docs/GUIA_2.3.0.md#se-algo-falhar).
+
+<a id="seguranca"></a>
+
+## Segurança, em linguagem simples
+
+| Proteção presente no código | O que ela ajuda a evitar |
+|---|---|
+| ADMIN criado no primeiro uso e senhas protegidas por hash Argon2 | Distribuição com uma senha administrativa compartilhada. |
+| Perfis ADMIN/MESÁRIO e permissões verificadas no servidor | Executar operações restritas apenas abrindo uma URL ou chamando a API. |
+| Vínculo aprovado e certificado próprio da instalação | Conectar a Urna a uma Central desconhecida na rede. |
+| Autorização de voto consumida no registro e operação transacional | Reutilizar a mesma liberação ou duplicar um voto por repetição de requisição. |
+| Voto sem nome/matrícula no registro e escolha criptografada | Exposição direta da escolha na tabela de votos. |
+| Lacração, hashes e registros de auditoria | Alterações silenciosas de configuração e inconsistências verificáveis. |
+
+**O alcance dessas proteções tem limites.** Controle administrativo do Windows, malware, observação física, ordem de atendimento, cópias de bancos e filas de impressão podem comprometer a eleição. Rede local e criptografia não garantem, sozinhas, sigilo absoluto ou ausência de fraude.
+
+O bloqueio de repetição **por aluno** depende do cadastro e da identificação pela Mesa. No modo sem identificação, o sistema não sabe se uma pessoa voltou à cabine. Use o fluxo identificado quando precisar controlar uma participação por aluno.
+
+**[Entenda as proteções, os limites e os cuidados com os dados →](SEGURANCA.md)**
+
+## Termos que aparecem no sistema
+
+| Termo | Significado |
+|---|---|
+| Central | Aplicativo que mantém o servidor da eleição em funcionamento. |
+| Chapa | Grupo de candidatos identificado por número e nome. |
+| Lacrar | Fixar a configuração e registrar sua integridade antes da abertura. Revise os cadastros primeiro. |
+| Zerésima | Documento de abertura usado para conferir que ainda não há votos. |
+| Boletim de Urna (BU) | Documento com os totais apurados após o encerramento. |
+| Vínculo | Aprovação de um computador da Urna para trabalhar com aquela Central. |
+| Hash | Uma impressão digital de um conjunto de dados. Mudanças alteram o valor; ele não prova sozinho que a eleição é legítima. |
+| Quiosque | Janela com os controles do navegador ocultos. Facilita o uso da cabine, mas não bloqueia todo o Windows. |
+
+<a id="testes"></a>
+
+## Testes e evidências
+
+A aprovação de uma versão depende dos testes do código **e** de um ensaio nos equipamentos que serão usados.
+
+| Verificação | Evidência e limite |
+|---|---|
+| Interface JavaScript | **14 testes passaram em 12/10/2026**, incluindo escolha, rejeição, som, impressão pendente e recuperação. Usam DOM/rede simulados. |
+| Cadastro simplificado | **6 testes passaram em 12/10/2026**, com SQLite em memória: cadastro, importação, duplicidade e bloqueio após lacração. |
+| Aparência da votação | Navegador com a interface oficial e dados fictícios: seleção, cartão compacto, CORRIGIR, branco e conclusão. Servidor/impressora simulados. |
+| Servidor, TLS e instalador | Há testes no repositório e verificações no workflow Windows. Confira o resultado da execução do **commit que vai instalar**. |
+| Equipamentos da escola | Rede entre os dois PCs, som nos alto-falantes, papel, guilhotina, falta de papel e reinicialização precisam de teste presencial. |
+
+O selo no topo aponta para o workflow. Ele não é uma certificação de segurança nem um teste da impressora da escola. A presença de um teste no repositório também não significa que ele passou em todas as versões.
+
+**[Roteiro de ensaio e mapa dos testes →](docs/TESTES_E_VALIDACAO.md)** · [Registro técnico das revisões](docs/REVISAO_CODIGO.md)
+
+Na entrega de publicação de 13/10/2026, **97 testes da suíte passaram**, além da validação local do Worker/D1 e do runtime Windows com Python externo fora do PATH. Confira o [relatório com resultados e limitações](docs/ENTREGA_PUBLICACAO_2026-10-13.md). Publicação na conta Cloudflare e ensaio físico continuam necessários.
+
+## Depois do teste e antes da eleição real
+
+- Para manter usuários e vínculos: encerre a eleição e use **Administração → Histórico → Iniciar nova eleição**. A anterior fica arquivada.
+- Para apagar também senhas e configurações: use o procedimento de **reset completo**, com backup prévio se houver dados que devam ser preservados.
+- Instale atualizações antes de lacrar. A atualização é bloqueada com eleição lacrada ou aberta.
+
+**[Escolher entre nova eleição e reset completo →](docs/RESETAR_SISTEMA.md)**
+
+## Versões e desenvolvimento
+
+O código usa a versão **2.3.0**. Nesta revisão: cartão compacto de confirmação, CORRIGIR vermelho, som sempre habilitado, cadastro apenas com nome/turma e aviso de impressão na tela FIM/VOTOU. Confira também a data e o commit do instalador: revisões diferentes podem exibir o mesmo número de versão.
+
+[Histórico de alterações](docs/CHANGELOG.md) · [Gerar EXE pelo GitHub ou PowerShell](docs/GERAR_EXE_NO_GITHUB.md) · [Demonstração independente com dados fictícios](demo/README.md)
+
+<details>
+<summary><strong>Para quem vai manter o código</strong></summary>
 
 ```text
-.
-├── .github/workflows/       # Build e testes no GitHub Actions
-├── installer/               # Aplicativo Windows, proteção de atualização e instalador
-├── tests/                   # Integração, TLS, votação, impressão e recuperação
-├── docs/                    # Guias, histórico e revisão técnica
-├── URNA_ESCOLAR_SOURCE/
-│   ├── 01_SERVIDOR_ADMIN/   # API, banco, Administração, Mesa e Urna web
-│   └── 03_URNA/             # Biblioteca de impressão
-└── SEGURANCA.md             # Modelo de segurança e limites
+.github/workflows/          Compilação Windows e artefatos
+installer/                  Aplicativo Windows, instalador e pacote de fontes
+tests/                      Testes de interface, servidor, impressão e instalação
+portal/cloudflare/          Portal público para Workers Free + D1
+transmitter/                Transmissor Eleitoral e verificador offline
+docs/                       Guias e capturas revisadas com dados fictícios
+demo/                       Demonstração separada; não é a eleição real
+URNA_ESCOLAR_SOURCE/
+  01_SERVIDOR_ADMIN/         API, banco e interfaces web
+  03_URNA/                  Biblioteca de impressão
 ```
 
-Arquivos de build, ambientes Python, executáveis, bancos, chaves, certificados, logs e dados reais ficam fora do Git. Nunca envie ao repositório dados de uma eleição.
+Para gerar o instalador localmente, use Python 3.13 x64 e Inno Setup 6 conforme o [guia de compilação](docs/GERAR_EXE_NO_GITHUB.md). Para os usuários finais, distribua o instalador pronto.
 
-## Qualidade e testes
+Bancos, chaves, credenciais, fotos de eleições, backups, logs e arquivos de build não devem ir ao GitHub. O empacotador aceita somente arquivos previstos e as capturas de documentação revisadas. Dados fictícios dos testes ficam separados da instalação real.
 
-O projeto possui **50 testes automatizados coletados**. Eles cobrem votação completa, concorrência, vínculo, autenticação, impressão e reimpressão, atualização protegida, certificados TLS, consistência da versão, modos do Edge, margem antes do corte, dados arquivados, imagens longas, reset e interface. O workflow também faz testes do executável empacotado em um Windows temporário.
+</details>
 
-Testes automatizados não comprovam o funcionamento físico do roteador, cabos, driver, impressora, papel ou guilhotina. Antes da eleição oficial, teste os dois computadores e percorra abertura, votação, falha de papel, recuperação e encerramento.
+## Precisa de ajuda?
 
-## Documentação
-
-- [Guia de instalação e operação](docs/GUIA_2.3.0.md)
-- [Como enviar ao GitHub e gerar o EXE](docs/GERAR_EXE_NO_GITHUB.md)
-- [Como limpar uma eleição ou resetar tudo](docs/RESETAR_SISTEMA.md)
-- [Histórico de versões](docs/CHANGELOG.md)
-- [Segurança e privacidade](SEGURANCA.md)
-- [Auditoria das funções preservadas](docs/AUDITORIA_FUNCOES_2.3.0.md)
-- [Correção de HTTPS](docs/CORRECAO_HTTPS.md)
-- [Revisão do código e validações](docs/REVISAO_CODIGO.md)
-
-## Estado do projeto
-
-O sistema está em desenvolvimento e validação para uso escolar. A versão 2.3.0 deve passar pelo GitHub Actions e por uma eleição física de teste antes de ser usada. Relate problemas com passos para reproduzir, versão instalada, papel da máquina e mensagens do Diagnóstico, sem anexar banco, credenciais, chaves ou dados de eleitores.
-
-### Cadastro com nome e turma
-
-Matrícula e turno são opcionais no cadastro manual e no cadastro excepcional autorizado. Sem matrícula, o sistema gera um código interno; sem turno, registra “Não informado”. A busca pelo nome na Mesa permanece disponível.
-
-Para importar CSV, basta usar as colunas `Nome,Turma`. Em XLSX, cada aba representa uma turma e basta a coluna `Nome`. As colunas `Matricula` e `Turno` continuam aceitas. Reimportar o mesmo nome e turma sem matrícula reutiliza o código, evitando duplicação. Dois alunos com o mesmo nome completo na mesma turma precisam de matrículas ou códigos distintos informados manualmente. Mudanças no nome ou na turma podem gerar outro código: revise a lista antes da lacração.
+Consulte as [perguntas frequentes](docs/PERGUNTAS_FREQUENTES.md). Ao [relatar um problema](https://github.com/arturcardoalves/Urna-Eletronica-Escolar/issues), informe a versão/commit, o papel do computador, os passos e a mensagem exibida. Revise as capturas e os logs antes de anexar: não publique nomes reais de alunos, senhas, tokens, bancos ou chaves.

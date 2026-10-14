@@ -29,3 +29,11 @@ URNA_ESCOLAR_SOURCE/01_SERVIDOR_ADMIN/app/static/uploads/**
 .env.*
 Backups/
 release-output/
+portal/data/
+*.uepkg
+*.receipt.json
+trusted.json
+trusted.new
+node_modules/
+.wrangler/
+.dev.vars

@@ -1,5 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 import os
+import sys
 from pathlib import Path
 from PyInstaller.utils.hooks import collect_all
 
@@ -8,14 +9,13 @@ srv = root / 'URNA_ESCOLAR_SOURCE' / '01_SERVIDOR_ADMIN'
 if not (srv / 'app' / 'main.py').exists():
     raise RuntimeError(f'Fonte do servidor nao encontrada em {srv}')
 
-datas = [
-    (str(srv / 'app' / 'templates'), 'app/templates'),
-    (str(srv / 'app' / 'static'), 'app/static'),
-]
+sys.path.insert(0,str(root/'installer'))
+from build_assets import web_assets
+datas = web_assets(srv/'app')
 binaries = []
-hiddenimports = ['app.main', 'scripts.generate_tls']
+hiddenimports = ['app.main', 'scripts.generate_tls', 'win32crypt']
 
-for pkg in ['uvicorn','fastapi','starlette','sqlalchemy','cryptography','argon2','reportlab','openpyxl','jinja2','multipart']:
+for pkg in ['uvicorn','fastapi','starlette','sqlalchemy','cryptography','argon2','reportlab','openpyxl','jinja2','multipart','qrcode','PIL']:
     # Missing required packages must stop the build, not create an incomplete EXE.
     d, b, h = collect_all(pkg)
     datas += d

@@ -150,3 +150,18 @@ def test_reset_embedded_powershell_only_deletes_confirmed_role_data(tmp_path, ro
     for name in ('Servidor', 'Backups'):
         assert (machine / 'UrnaEscolar' / name).exists() == (role == 'urna')
     assert all((base / 'unrelated.txt').read_text() == 'keep' for base in (local, machine))
+
+def test_installer_blocks_update_while_transmitter_is_running(tmp_path, monkeypatch):
+    import runpy
+    import sys
+    from types import SimpleNamespace
+    report = tmp_path / 'resultado.txt'
+    monkeypatch.setenv('PROGRAMDATA', str(tmp_path))
+    monkeypatch.setattr(sys, 'argv', ['upgrade_guard.py', str(report)])
+    monkeypatch.setitem(sys.modules, 'psutil', SimpleNamespace(process_iter=lambda fields: [
+        SimpleNamespace(info={'name':'TransmissorEleitoral.exe'})]))
+    with pytest.raises(SystemExit) as error:
+        runpy.run_path(str(ROOT/'installer/upgrade_guard.py'), run_name='__main__')
+    assert error.value.code == 1
+    assert 'Transmissor Eleitoral' in report.read_text('utf-8')
+    assert not (tmp_path/'UrnaEscolar/Backups').exists()

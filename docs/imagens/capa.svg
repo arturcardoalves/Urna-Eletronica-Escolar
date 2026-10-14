@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="360" viewBox="0 0 1440 360" role="img" aria-labelledby="title desc">
+<title id="title">Urna Escolar</title><desc id="desc">Da preparação à apuração: organizar, votar e conferir. Um projeto para eleições estudantis na rede local.</desc>
+<rect width="1440" height="360" rx="24" fill="#142d38"/>
+<circle cx="1385" cy="35" r="205" fill="#1a4146"/>
+<circle cx="1390" cy="30" r="150" fill="none" stroke="#38706b" stroke-width="2"/>
+<g font-family="Segoe UI,Arial,sans-serif">
+<rect x="60" y="44" width="238" height="32" rx="16" fill="#264e53"/>
+<text x="179" y="66" text-anchor="middle" font-size="14" font-weight="700" letter-spacing="2" fill="#a9e5c5">ELEIÇÕES ESTUDANTIS</text>
+<text x="58" y="146" font-size="64" font-weight="750" fill="#fff">Urna Escolar</text>
+<text x="62" y="188" font-size="23" fill="#c7dce1">Participação na escola. Organização em cada etapa.</text>
+<g transform="translate(62 245)">
+<rect width="384" height="66" rx="12" fill="#203f4b"/><text x="22" y="42" font-size="22" font-weight="700" fill="#afe4c6">01</text><text x="68" y="42" font-size="23" fill="#fff">Preparar a eleição</text>
+<rect x="414" width="384" height="66" rx="12" fill="#203f4b"/><text x="436" y="42" font-size="22" font-weight="700" fill="#afe4c6">02</text><text x="482" y="42" font-size="23" fill="#fff">Votar e imprimir</text>
+<rect x="828" width="384" height="66" rx="12" fill="#203f4b"/><text x="850" y="42" font-size="22" font-weight="700" fill="#afe4c6">03</text><text x="896" y="42" font-size="23" fill="#fff">Conferir o resultado</text>
+</g>
+<g transform="translate(1180 85)" stroke="#afe4c6" stroke-width="5" fill="none" stroke-linejoin="round"><path d="M0 57h140l18 35v59H-18V92z"/><path d="M24 58l-8-63 73-9 8 72"/><path d="M39 19l13 13 23-28"/><path d="M15 92h110"/></g>
+</g></svg>
