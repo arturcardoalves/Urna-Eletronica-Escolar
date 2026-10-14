@@ -1,4 +1,4 @@
-#define MyAppName "Urna Eletrônica Escolar"
+﻿#define MyAppName "Urna Eletrônica Escolar"
 #define MyAppVersion "2.3.0"
 
 [Setup]

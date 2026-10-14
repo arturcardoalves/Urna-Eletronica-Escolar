@@ -1,4 +1,4 @@
-param([switch]$TestarInstalacao)
+﻿param([switch]$TestarInstalacao)
 
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest

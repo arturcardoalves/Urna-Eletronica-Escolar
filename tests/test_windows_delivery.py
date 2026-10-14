@@ -15,6 +15,39 @@ from upgrade_guard import check_and_backup
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_windows_build_sources_preserve_unicode_shortcuts():
+    # Windows PowerShell 5.1 and Inno must not interpret UTF-8 as the
+    # machine's ANSI code page (notably on the English GitHub runner).
+    import codecs
+    for name in ('installer/BUILD_WINDOWS.ps1', 'installer/UrnaEscolar.iss'):
+        source = (ROOT / name).read_bytes()
+        assert source.startswith(codecs.BOM_UTF8), name
+        assert 'Publicação de Resultados' in source.decode('utf-8-sig')
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='Windows PowerShell 5.1 parser')
+def test_powershell_reads_actual_shortcut_name_without_mojibake():
+    import base64
+    script = r"""
+    $tokens=$null; $parseErrors=$null
+    $ast=[System.Management.Automation.Language.Parser]::ParseFile(
+        $env:BUILD_SCRIPT_UNDER_TEST, [ref]$tokens, [ref]$parseErrors)
+    if ($parseErrors.Count) { throw 'Invalid build script' }
+    $literal=$ast.FindAll({param($node)
+        $node -is [System.Management.Automation.Language.StringConstantExpressionAst] -and
+        $node.Value.EndsWith(' de Resultados.lnk')}, $true)
+    if ($literal.Count -ne 1) { throw 'Missing publication shortcut' }
+    [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($literal[0].Value))
+    """
+    completed = subprocess.run(
+        ['powershell.exe', '-NoProfile', '-Command', script],
+        env=dict(os.environ, BUILD_SCRIPT_UNDER_TEST=str(ROOT/'installer/BUILD_WINDOWS.ps1')),
+        capture_output=True, text=True, timeout=30,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert base64.b64decode(completed.stdout.strip()).decode('utf-8') == 'Publicação de Resultados.lnk'
+
+
 def test_upgrade_preserves_archived_databases_and_committed_wal(tmp_path):
     data = tmp_path / 'Servidor'
     archive = data / 'archives' / 'encerrada'
