@@ -65,6 +65,17 @@ jobs:
           path: dist/TransmissorEleitoral.exe
           if-no-files-found: error
 
+      - name: Gerar e testar demonstracao ficticia independente
+        shell: powershell
+        run: .\installer\BUILD_TESTE.ps1
+
+      - name: Publicar EXE de teste ficticio
+        uses: actions/upload-artifact@v4
+        with:
+          name: Urna-Escolar-Teste-Ficticio
+          path: release-output/demo/UrnaEscolar_Teste.exe
+          if-no-files-found: error
+
       - name: Publicar instalador como artefato
         uses: actions/upload-artifact@v4
         with:

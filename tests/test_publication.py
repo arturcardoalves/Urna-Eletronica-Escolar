@@ -100,10 +100,19 @@ def test_qr_rasters_decode_at_thermal_resolution(packets):
             assert zxingcpp.read_barcode(raster).text == text
 
 
-def test_both_qrs_decode_inside_actual_thermal_document(packets):
+def test_both_qrs_decode_inside_actual_thermal_document(packets, monkeypatch):
     import zxingcpp
-    from print_agent.agent import _render_zero_receipt_image, _render_result_receipt_image
-    for renderer,index in [(_render_zero_receipt_image,1),(_render_result_receipt_image,3)]:
+    from PIL import ImageFont
+    from print_agent import agent
+    # This checks QR encoding/placement in the real 576-dot receipt renderer,
+    # independently of Windows fonts installed on the build machine. Matching
+    # the physical Atkinson typography/driver is still an equipment check.
+    # Force font absence so local installs cannot hide a runner-only failure.
+    def missing_font():
+        raise RuntimeError('Fonte ausente no ambiente isolado do teste')
+    monkeypatch.setattr(agent, '_atkinson_font_paths', missing_font)
+    monkeypatch.setattr(agent, '_pil_font', lambda size, bold=False: ImageFont.load_default(size=size))
+    for renderer,index in [(agent._render_zero_receipt_image,1),(agent._render_result_receipt_image,3)]:
         doc=packets['docs'][index];qr=links(doc,packets['key'])
         paper={'institution':doc['election']['school'],'election':doc['election']['name'],
                'slates':[{'number':10,'name':'Chapa fictícia','members':[],'votes':doc['totals']['total']}],

@@ -1,25 +1,29 @@
-# Urna Escolar — demonstracao independente
+# Urna Escolar — teste fictício independente
 
-Execute `UrnaEscolar_Teste.exe`. Nao precisa instalar Python nem abrir a Central. Nao acessa banco, rede, senhas ou dados da eleicao real. Os votos ficam somente na memoria e desaparecem ao fechar.
+O arquivo está em `release-output/demo/UrnaEscolar_Teste.exe`. Abra-o diretamente no Windows: não precisa instalar Python nem abrir a Central. Não acessa banco, senhas, chaves ou dados da eleição real. Não transmite documentos ao portal. Os votos e as chaves fictícias ficam somente em memória e desaparecem ao fechar.
 
-1. Use as chapas ficticias 10, 20 e 30, ou BRANCO.
-2. Escolha voto por Mouse ou Teclado. No teclado: digite dois numeros; Enter confirma, Backspace corrige e B seleciona branco.
-3. O som toca ao confirmar. O botao Testar som permite conferir o volume.
-4. Para imprimir votos, selecione a impressora e marque Imprimir cada voto. Para zeresima e boletim, use os botoes especificos (eles imprimem mesmo com o checkbox desmarcado).
-5. Use Windows para o driver instalado (inclusive Microsoft Print to PDF) ou ESC/POS somente para termica compativel. Margem antes do corte: 10 a 80 mm, padrao 30.
-6. Imprima a zeresima antes de votar. O boletim mostra os votos da sessao de teste, sem encerrar o teste. Para recomecar, use Zerar teste.
-7. Reimprimir ultimo repete somente o documento, sem aumentar o total de votos. Confira fila e papel antes de repetir.
+1. Clique **Testar teclado**. Uma janela mostra o desenho do teclado e do teclado numérico. Pressione as teclas físicas: amarelo enquanto pressionadas, verde após soltar. O painel indica a tecla recebida e as funções **B = BRANCO**, **Backspace = CORRIGE**, **Enter = CONFIRMA**. Clique no desenho para simular uma tecla (azul); isso não valida o hardware. **Limpar teste do teclado** reinicia os indicadores. Este painel não registra votos.
+2. Na tela principal, selecione a impressora e o modo. **Windows** usa o driver instalado (inclusive Microsoft Print to PDF). **ESC/POS** exige impressora térmica compatível. Ajuste o avanço antes do corte entre 10 e 80 mm (padrão 30).
+3. Imprima **Zerésima + QR Codes** antes de votar. Mostra todas as chapas e brancos zerados. Depois de votar, use **Zerar teste** para emitir outra zerésima.
+4. Use **Imprimir voto BRANCO** e **Imprimir voto CHAPA 10** para testar apenas as fichas de papel. Esses dois botões não acrescentam votos ao boletim.
+5. Para testar o fluxo completo e a contagem, escolha voto por **Mouse** ou **Teclado**, selecione/digite chapa 10, 20 ou 30 (ou B para branco), corrija com Backspace se necessário e confirme com Enter ou CONFIRMA. O som toca ao confirmar. Marque **Imprimir cada voto** para imprimir nesse fluxo.
+6. Imprima **Boletim + QR Codes** para conferir os votos registrados nesta sessão. As fichas de calibração do item 4 não entram nessa contagem. O teste comporta 100 votos fictícios; depois use Zerar teste.
+7. **Reimprimir último** repete os mesmos dados e QR Codes, sem acrescentar voto. Confira fila e papel antes de repetir.
 
-Todos os documentos trazem TESTE FICTICIO / SEM VALIDADE ELEITORAL. O modulo de impressao e o MP3 sao os do projeto. Sem a fonte Atkinson instalada, o raster de demonstracao usa Segoe UI; nao instala fontes. O aplicativo confirma envio ao driver, nao a saida fisica do papel. Esta demonstracao nao testa autenticacao, sigilo, rede nem prevencao de voto duplicado de uma eleicao real.
+Todos os documentos trazem **TESTE FICTÍCIO — SEM VALIDADE ELEITORAL**. O módulo de impressão e o MP3 são os do projeto. Sem Atkinson instalada, o raster usa Segoe UI; o teste não instala fontes. O aplicativo confirma o envio ao driver, não a saída física do papel.
 
-## Gerar o EXE novamente
+Zerésima e boletim têm dois QR Codes: um resumo em texto legível com contagens fictícias e um resumo Ed25519 assinado no formato UE1 do sistema oficial. A chave é temporária e exclusiva dessa sessão. Não existe documento publicado ou credencial de transmissão de teste. No verificador público, o QR UE1 pode ter assinatura válida, mas sua identidade e seus dados não serão confirmados pelo portal. Os QR Codes são para testar leitura e impressão; não comprovam uma eleição oficial.
 
-Na raiz do repositorio, com as dependencias de compilacao instaladas:
+## Gerar novamente
+
+Após preparar o ambiente de compilação do projeto:
 
 ```powershell
-.\.build-venv\Scripts\python.exe -m PyInstaller --noconfirm --distpath release-output/demo --workpath build/demo demo/urna_demo.spec
+.\installer\BUILD_TESTE.ps1
 ```
 
-O parametro `--self-test` valida contagem ficticia, documentos rasterizados e inicializacao do Tk sem enviar trabalhos a impressora ou tocar som.
+O GitHub Actions também gera um artefato separado **Urna-Escolar-Teste-Ficticio**. O teste não é incluído na instalação de uma eleição real.
 
-Validacao da entrega: EXE compilado localmente no Windows, com 28.075.659 bytes. Autoteste do EXE retornou codigo 0 (contagem, rasterizacao de voto/zeresima/boletim e Tk). Teste separado de interface Tk oculta confirmou voto por mouse, teclado, branco, rejeicao de numero invalido e bloqueio durante trabalho. Audio foi simulado nesse teste; som nos alto-falantes e impressao fisica permanecem para verificacao no equipamento. Nenhum trabalho foi enviado a impressora durante a validacao automatica.
+## Validação de 14/10/2026
+
+Três testes automatizados passaram: contagens e fichas branco/chapa, leitura dos dois QR Codes nos rasters térmicos completos, assinatura, painel de teclado e distinção entre tecla física simulada e clique do mouse, votação pelo teclado e impressão por driver simulado. O EXE foi recompilado e seu autoteste retornou zero (Tk, Ed25519 e renderizador real). Não houve impressão física, som nos alto-falantes ou ensaio de teclado físico nesses testes. Esta demonstração não valida autenticação, sigilo, rede nem prevenção de fraude do sistema oficial.
