@@ -63,7 +63,7 @@ if (agentInput) agentInput.value = agentUrl;
 if (printerModeSelect) printerModeSelect.value = printerMode;
 
 let keyConfirm = shell.dataset.keyConfirm || 'Enter';
-let keyCorrect = shell.dataset.keyCorrect || 'Backspace';
+let keyCorrect = shell.dataset.keyCorrect || 'Delete';
 let keyBlank = shell.dataset.keyBlank || 'KeyB';
 let votingMode = shell.dataset.mode || 'NUMERIC';
 let anonymousMode = shell.dataset.identification === '0';

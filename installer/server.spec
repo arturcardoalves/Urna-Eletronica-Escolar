@@ -15,7 +15,7 @@ datas = web_assets(srv/'app')
 binaries = []
 hiddenimports = ['app.main', 'scripts.generate_tls', 'win32crypt']
 
-for pkg in ['uvicorn','fastapi','starlette','sqlalchemy','cryptography','argon2','reportlab','openpyxl','jinja2','multipart','qrcode','PIL']:
+for pkg in ['uvicorn','fastapi','starlette','sqlalchemy','cryptography','argon2','reportlab','openpyxl','jinja2','multipart','PIL']:
     # Missing required packages must stop the build, not create an incomplete EXE.
     d, b, h = collect_all(pkg)
     datas += d

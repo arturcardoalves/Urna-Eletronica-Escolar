@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 try:
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw, ImageFont, ImageWin
 except Exception:
     Image = None
     ImageDraw = None
@@ -30,7 +30,7 @@ else:
     IMPORT_ERROR = None
 
 
-AGENT_VERSION = "2.3.0"
+AGENT_VERSION = "2.4.0"
 
 app = FastAPI(title="Urna Escolar - Agente de Impressão", version=AGENT_VERSION)
 
@@ -74,7 +74,7 @@ class PrintJob(BaseModel):
     title: str = "Urna Escolar"
     cut: bool = True
     copies: int = 1
-    # ballot = voto físico; text = zerésima/BU/log/relatórios operacionais.
+    # Shared graphic layouts for both Windows and ESC/POS printers.
     layout: str = "text"
     paper: dict[str, Any] | None = None
     # windows = driver instalado no Windows; escpos = RAW ESC/POS.
@@ -423,41 +423,6 @@ def _receipt_canvas_height(paper: dict[str, Any]) -> int:
 
 
 
-def _append_publication_qrs(receipt, paper):
-    """Two vertically stacked QR codes, four-module quiet zone, >=4 pixels/module."""
-    publication = paper.get('publication')
-    if not publication:
-        return receipt
-    from publication_core.documents import qr_image
-    codes = [("CONSULTA PUBLICA", qr_image(publication['consultation'])),
-             ("VERIFICACAO DIGITAL", qr_image(publication['verification']))]
-    import textwrap
-    correction = textwrap.wrap(publication.get('correction', ''), 52)
-    extra = sum(img.height + 72 for _, img in codes) + 200 + len(correction)*24
-    result = Image.new('L', (receipt.width, receipt.height + extra), 255)
-    result.paste(receipt, (0, 0))
-    draw = ImageDraw.Draw(result)
-    y = receipt.height + 16
-    draw.text((24,y), 'DOCUMENTO PUBLICO - REVISAO '+str(publication.get('revision',1)), font=_pil_font(18, True), fill=0)
-    y += 32
-    for line in correction:
-        draw.text((24,y),line,font=_pil_font(18,False),fill=0)
-        y += 24
-    for label, img in codes:
-        draw.text((24, y), label, font=_pil_font(22, True), fill=0)
-        y += 38
-        result.paste(img, ((receipt.width - img.width) // 2, y))
-        y += img.height + 34
-    draw.text((24, y), 'ID: '+publication['document_id'], font=_pil_font(14, False), fill=0)
-    y += 28
-    draw.text((24, y), 'CHAVE PUBLICA (SHA-256):', font=_pil_font(16, True), fill=0)
-    y += 26
-    for part in (publication['fingerprint'][:32], publication['fingerprint'][32:]):
-        draw.text((24, y), part, font=_pil_font(16, False), fill=0)
-        y += 25
-    return result.crop((0, 0, result.width, y + 24))
-
-
 def _render_zero_receipt_image(paper: dict[str, Any]):
     width = 576
     image = Image.new("L", (width, _receipt_canvas_height(paper)), 255)
@@ -548,7 +513,7 @@ def _render_zero_receipt_image(paper: dict[str, Any]):
     if y + 20 > image.height:
         raise RuntimeError("O recibo excede a área preparada. Impressão cancelada para não cortar informações.")
     cropped = image.crop((0, 0, width, y + 20))
-    return _append_publication_qrs(cropped, paper)
+    return cropped
 
 
 def _render_result_receipt_image(paper: dict[str, Any]):
@@ -650,7 +615,7 @@ def _render_result_receipt_image(paper: dict[str, Any]):
     if y + 20 > image.height:
         raise RuntimeError("O recibo excede a área preparada. Impressão cancelada para não cortar informações.")
     cropped = image.crop((0, 0, width, y + 20))
-    return _append_publication_qrs(cropped, paper)
+    return cropped
 
 
 def _escpos_receipt(job: PrintJob) -> bytes:
@@ -961,6 +926,43 @@ def _windows_ballot_page(dc, job: PrintJob, printable_w: int, printable_h: int, 
     return bottom
 
 
+def _receipt_page_slices(image, max_rows):
+    """Split on blank raster rows, preserving text at driver page boundaries."""
+    if max_rows < 32:
+        raise RuntimeError("Aumente a altura do papel nas preferências da impressora.")
+    top = 0
+    while top < image.height:
+        end = min(top + max_rows, image.height)
+        if end < image.height:
+            # Prefer a blank gap near the page end over cutting a text row.
+            for row in range(end - 1, max(top + 16, end - 160), -1):
+                if image.crop((0, row, image.width, row + 1)).getextrema() == (255, 255):
+                    end = row + 1
+                    break
+            else:
+                raise RuntimeError("Altura do papel insuficiente para imprimir sem cortar o texto. Aumente a altura no driver.")
+        yield top, end
+        top = end
+
+
+def _windows_receipt_pages(dc, job, left, width, top, limit, dpi_x, dpi_y, feed):
+    """Print the same readable 80 mm design as ESC/POS, via Windows GDI."""
+    render = _render_zero_receipt_image if job.layout == 'zero_receipt' else _render_result_receipt_image
+    image = render(job.paper)
+    # Respect non-square printer DPI without stretching the document.
+    scale_y = width / image.width * dpi_y / dpi_x
+    rows = int((limit - top) / scale_y)
+    for start, end in _receipt_page_slices(image, rows):
+        if start:
+            dc.TextOut(left, limit + feed, " ")
+            dc.EndPage()
+            dc.StartPage()
+        piece = image.crop((0, start, image.width, end)).convert('RGB')
+        bottom = top + max(1, int((end - start) * scale_y))
+        ImageWin.Dib(piece).draw(dc.GetHandleOutput(), (left, top, left + width, bottom))
+    return bottom
+
+
 def _windows_print(job: PrintJob):
     """Print via the normal Windows driver (GDI)."""
     _require_windows()
@@ -997,6 +999,10 @@ def _windows_print(job: PrintJob):
             try:
                 if job.layout == "ballot" and job.paper:
                     content_bottom = _windows_ballot_page(dc, job, printable_w, content_limit, dpi_x, dpi_y)
+                elif job.layout in {"zero_receipt", "result_receipt"} and job.paper:
+                    content_bottom = _windows_receipt_pages(
+                        dc, job, margin_x, right - margin_x, margin_y,
+                        content_limit, dpi_x, dpi_y, feed_pixels)
                 else:
                     y = margin_y
                     line_height = max(15, int(4.2 * mmy))

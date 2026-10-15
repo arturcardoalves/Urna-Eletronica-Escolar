@@ -91,7 +91,7 @@ def test_public_version_is_consistent_across_components():
         print_agent_app.version,
         print_agent_health()['version'],
         metadata['project']['version'],
-    } == {'2.3.0'}
+    } == {'2.4.0'}
 
 
 @pytest.mark.parametrize('value,expected', [('10', 10), (30, 30), ('80', 80)])

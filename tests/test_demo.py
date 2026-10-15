@@ -3,9 +3,7 @@ from types import SimpleNamespace
 import tkinter as tk
 import time
 import pytest
-import zxingcpp
 from demo import urna_demo as demo
-from publication_core.protocol import verify_qr
 
 
 @pytest.fixture(autouse=True)
@@ -16,7 +14,7 @@ def isolate_demo_font_fallback(monkeypatch):
     monkeypatch.setattr(agent, '_atkinson_font_paths', agent._atkinson_font_paths)
 
 
-def test_demo_thermal_qrs_and_blank_slate_ballots():
+def test_demo_thermal_documents_and_blank_slate_ballots():
     election=demo.Election()
     zero=election.document('zero_receipt')
     election.vote(10);election.vote(None)
@@ -25,12 +23,8 @@ def test_demo_thermal_qrs_and_blank_slate_ballots():
     agent=demo.renderer()
     for render,job in [(agent._render_zero_receipt_image,zero),(agent._render_result_receipt_image,result)]:
         image=render(job['paper'])
-        decoded={r.text for r in zxingcpp.read_barcodes(image)}
-        q=job['paper']['publication']
-        assert q['consultation'] in decoded and q['verification'] in decoded
-        assert demo.WARNING in q['consultation']
-        assert verify_qr(q['verification'],q['fingerprint'])['trusted']
-        assert 'workers.dev' not in q['verification']
+        assert image.width == 576 and image.height > 0
+        assert 'publication' not in job['paper']
     for choice in (None,10):
         job=election.document('ballot',choice)
         assert job['paper']['number']==choice
@@ -52,7 +46,7 @@ def test_demo_visual_keyboard_and_simulated_mouse_are_distinct():
         panel.clicked('Return')
         assert panel.physical=={'B'} and panel.mouse=={'Return'}
         assert 'simulado' in panel.last.get()
-        panel.press(SimpleNamespace(keysym='BackSpace',char=''))
+        panel.press(SimpleNamespace(keysym='Delete',char=''))
         assert 'CORRIGE' in panel.last.get()
         panel.press(SimpleNamespace(keysym='KP_Enter',char=''))
         assert 'CONFIRMA' in panel.last.get()

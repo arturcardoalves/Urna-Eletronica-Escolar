@@ -4,8 +4,7 @@ import sys
 import os
 import queue
 import threading
-from datetime import datetime, timezone
-from uuid import uuid4
+from datetime import datetime
 import tkinter as tk
 from tkinter import ttk, messagebox
 
@@ -13,11 +12,6 @@ ROOT = Path(__file__).resolve().parents[1]
 if not getattr(sys, 'frozen', False):
     sys.path.insert(0, str(ROOT / 'URNA_ESCOLAR_SOURCE/03_URNA'))
     sys.path.insert(0, str(ROOT / 'URNA_ESCOLAR_SOURCE/01_SERVIDOR_ADMIN'))
-
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from publication_core.protocol import canonical, digest, qr_text
-from publication_core.documents import links
-from publication_core.schema import Document
 
 SLATES = {10: 'Chapa Horizonte', 20: 'Chapa Uniao', 30: 'Chapa Futuro'}
 WARNING = 'TESTE FICTICIO - SEM VALIDADE ELEITORAL'
@@ -27,26 +21,6 @@ class Election:
     def __init__(self):
         self.votes = {number: 0 for number in SLATES}
         self.blank = 0
-        self.key = Ed25519PrivateKey.generate()  # Ephemeral demo key; never saved.
-        self.eid, self.urn_id = str(uuid4()), str(uuid4())
-        self.started = datetime.now(timezone.utc).isoformat()
-        self.zero_hash = digest(canonical({'demo':self.eid, 'votes':self.votes, 'blank':0}))
-
-    def signed_document(self, zero):
-        election = dict(id=self.eid, name='Grêmio — TESTE FICTÍCIO', school=WARNING,
-            public_url='https://exemplo.invalid', identified=True, registered=100,
-            allow_blank=True, sealed_at=self.started, config_hash=self.zero_hash,
-            slates=[dict(number=n,name=name,photo=None,members=[]) for n,name in SLATES.items()],
-            urns=[dict(id=self.urn_id,code='TESTE01',name='URNA TESTE 01')])
-        totals=dict(registered=100,slates=[dict(number=n,votes=0 if zero else self.votes[n]) for n in SLATES],
-                    blank=0 if zero else self.blank,null=0,total=0 if zero else self.total,attendance=0 if zero else self.total)
-        now=datetime.now(timezone.utc).isoformat()
-        return Document.model_validate(dict(schema_version=1,id=str(uuid4()),kind='zero' if zero else 'result',
-            revision=1,previous=None,correction='',created_at=now,election=election,urn_id=self.urn_id,
-            configuration_digest=self.zero_hash,totals=totals,
-            evidence=dict(software_version='DEMO',zero_issued_at=self.started,opened_at=None if zero else self.started,
-                          closed_at=None if zero else now,zero_snapshot_hash=self.zero_hash,
-                          ballot_set_hash=None if zero else digest(canonical({'votes':self.votes,'blank':self.blank}))))).model_dump()
 
     @property
     def total(self):
@@ -90,14 +64,6 @@ class Election:
             rows += [f'Chapa {s["number"]} - {s["name"]}: {s["votes"]}' for s in paper['slates']]
             rows += [f'Brancos: {paper["blank_count"]}', f'TOTAL: {paper["total"]}', '', WARNING]
             text='\n'.join(rows)
-            doc=self.signed_document(zero)
-            publication=links(doc,self.key)
-            # Readable text + signed UE1 summary, with no production URL/upload.
-            publication['consultation']=text
-            publication['verification']=qr_text(doc,self.key)
-            paper['publication']=publication
-            paper.update(election_uuid=self.eid,config_hash=self.zero_hash,
-                         zero_snapshot_hash=self.zero_hash,ballot_head_hash=doc['evidence']['ballot_set_hash'] or 'TESTE')
         return dict(layout=kind, paper=paper, text=text, title='URNA TESTE - '+kind,
                     copies=1, cut=True, paper_width_mm=80)
 
@@ -134,7 +100,7 @@ class KeyboardTest:
         self.canvas.pack(fill='x',padx=16,pady=12)
         rows=[
             [(k,k,1) for k in ['Escape',*[f'F{i}' for i in range(1,13)]]],
-            [('grave','`',1),*[(str(n),str(n),1) for n in [1,2,3,4,5,6,7,8,9,0]],('minus','-',1),('equal','=',1),('BackSpace','Backspace\nCORRIGE',2)],
+            [('grave','`',1),*[(str(n),str(n),1) for n in [1,2,3,4,5,6,7,8,9,0]],('minus','-',1),('equal','=',1),('BackSpace','Backspace',2)],
             [('Tab','Tab',1.5),*[(c,c,1) for c in 'QWERTYUIOP'],('bracketleft','[',1),('bracketright',']',1),('backslash','\\',1.5)],
             [('Caps_Lock','Caps Lock',1.8),*[(c,c,1) for c in 'ASDFGHJKL'],('Ç','Ç',1),('asciitilde','~',1),('Return','Enter\nCONFIRMA',2.2)],
             [('Shift_L','Shift',2.2),*[(c,c+'\nBRANCO' if c=='B' else c,1) for c in 'ZXCVBNM'],('comma',',',1),('period','.',1),('semicolon',';',1),('Shift_R','Shift',2.8)],
@@ -160,7 +126,7 @@ class KeyboardTest:
         root.after(100,self.canvas.focus_set)
 
     def draw_key(self,key,label,x,y,width,height):
-        base='#b42318' if key=='BackSpace' else '#287644' if key in ('Return','KP_Enter') else '#fff'
+        base='#b42318' if key=='Delete' else '#287644' if key in ('Return','KP_Enter') else '#fff'
         rect=self.canvas.create_rectangle(x,y,x+width,y+height,fill=base,outline='#9aa9ae',width=1)
         text=self.canvas.create_text(x+width/2,y+height/2,text=label,font=('Segoe UI',9,'bold'),
                                     fill='white' if base!='#fff' else '#122f40')
@@ -174,7 +140,7 @@ class KeyboardTest:
     def press(self,event):
         key=keyboard_key(event.keysym,event.char)
         self.physical.add(key);self.down.add(key);self.color(key,'#ffda74')
-        function=' — CONFIRMA' if key in ('Return','KP_Enter') else ' — CORRIGE' if key in ('BackSpace','Delete') else ' — BRANCO' if key=='B' else ''
+        function=' — CONFIRMA' if key in ('Return','KP_Enter') else ' — CORRIGE' if key=='Delete' else ' — BRANCO' if key=='B' else ''
         self.last.set('Tecla física detectada: '+key+function)
         self.count.set(f'{len(self.physical)} teclas físicas verificadas · {len(self.mouse)} teclas simuladas pelo mouse')
         return 'break'
@@ -232,7 +198,7 @@ class Demo:
         modes=ttk.Frame(root);modes.pack(pady=5)
         for mode in ['Mouse','Teclado']:
             ttk.Radiobutton(modes,text='Voto por '+mode.lower(),variable=self.mode,value=mode,command=self.clear).pack(side='left',padx=20)
-        ttk.Label(root,text='Teclado: numero da chapa | Enter confirma | Backspace corrige | B branco',font=('Segoe UI',11)).pack(pady=5)
+        ttk.Label(root,text='Teclado: numero da chapa | Enter confirma | Delete corrige | B branco',font=('Segoe UI',11)).pack(pady=5)
         self.cards=ttk.Frame(root);self.cards.pack(pady=6)
         for n,name in SLATES.items():
             self.button(self.cards,f'{n}\n{name}',lambda n=n:self.select(str(n))).pack(side='left',padx=8,ipadx=12,ipady=16)
@@ -244,8 +210,8 @@ class Demo:
         ttk.Label(root,textvariable=self.counter).pack()
         docs=ttk.Frame(root);docs.pack(pady=6)
         for index,(label,func) in enumerate([('Testar teclado',self.keyboard_test),('Testar som',self.sound),
-                           ('Zerésima + QR Codes',lambda:self.document('zero_receipt')),
-                           ('Boletim + QR Codes',lambda:self.document('result_receipt')),
+                           ('Zerésima',lambda:self.document('zero_receipt')),
+                           ('Boletim',lambda:self.document('result_receipt')),
                            ('Imprimir voto BRANCO',lambda:self.print_sample(None)),
                            ('Imprimir voto CHAPA 10',lambda:self.print_sample(10)),
                            ('Reimprimir ultimo',self.reprint),('Zerar teste',self.reset)]):
@@ -287,7 +253,7 @@ class Demo:
         if event.char.isdigit() and event.char:
             self.select((self.choice if self.choice.isdigit() else '')[-1:]+event.char)
         elif event.keysym in ('Return','KP_Enter'):self.confirm()
-        elif event.keysym in ('BackSpace','Delete'):self.clear()
+        elif event.keysym=='Delete':self.clear()
         elif event.char.lower()=='b':self.select('BRANCO')
         return 'break'
 
@@ -395,10 +361,6 @@ def self_test():
     assert agent._escpos_ballot(agent.PrintJob(printer='TEST', **e.document('ballot',10)))
     for func,payload in [(agent._render_zero_receipt_image,Election().document('zero_receipt')), (agent._render_result_receipt_image,e.document('result_receipt'))]:
         image=func(payload['paper']);assert image.width>0 and image.height>0
-        assert payload['paper']['publication']['verification'].startswith('UE1|')
-    from publication_core.protocol import verify_qr
-    q=e.document('result_receipt')['paper']['publication']
-    assert verify_qr(q['verification'],q['fingerprint'])['trusted']
     root=tk.Tk();root.withdraw()
     panel=KeyboardTest(tk.Toplevel(root));panel.root.withdraw()
     from types import SimpleNamespace

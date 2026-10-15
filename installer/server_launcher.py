@@ -16,7 +16,7 @@ from cryptography.x509.oid import ExtensionOID
 
 import lan_runtime
 
-VERSION="2.3.0"
+VERSION="2.4.0"
 ROOT=Path(sys.executable).resolve().parent if getattr(sys,"frozen",False) else Path(__file__).resolve().parent.parent/"URNA_ESCOLAR_SOURCE/01_SERVIDOR_ADMIN"
 os.chdir(ROOT)
 sys.path.insert(0,str(ROOT))

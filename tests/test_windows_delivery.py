@@ -22,7 +22,7 @@ def test_windows_build_sources_preserve_unicode_shortcuts():
     for name in ('installer/BUILD_WINDOWS.ps1', 'installer/UrnaEscolar.iss'):
         source = (ROOT / name).read_bytes()
         assert source.startswith(codecs.BOM_UTF8), name
-        assert 'Publicação de Resultados' in source.decode('utf-8-sig')
+        assert 'Central da Eleição' in source.decode('utf-8-sig')
 
 
 @pytest.mark.skipif(os.name != 'nt', reason='Windows PowerShell 5.1 parser')
@@ -35,7 +35,7 @@ def test_powershell_reads_actual_shortcut_name_without_mojibake():
     if ($parseErrors.Count) { throw 'Invalid build script' }
     $literal=$ast.FindAll({param($node)
         $node -is [System.Management.Automation.Language.StringConstantExpressionAst] -and
-        $node.Value.EndsWith(' de Resultados.lnk')}, $true)
+        $node.Value.EndsWith(' da Eleição.lnk')}, $true)
     if ($literal.Count -ne 1) { throw 'Missing publication shortcut' }
     [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($literal[0].Value))
     """
@@ -45,7 +45,7 @@ def test_powershell_reads_actual_shortcut_name_without_mojibake():
         capture_output=True, text=True, timeout=30,
     )
     assert completed.returncode == 0, completed.stderr
-    assert base64.b64decode(completed.stdout.strip()).decode('utf-8') == 'Publicação de Resultados.lnk'
+    assert base64.b64decode(completed.stdout.strip()).decode('utf-8') == 'Central da Eleição.lnk'
 
 
 def test_upgrade_preserves_archived_databases_and_committed_wal(tmp_path):

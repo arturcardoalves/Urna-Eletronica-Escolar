@@ -9,11 +9,11 @@
 Votação por mouse ou teclado · Ficha impressa · Operação sem internet
 
 [![Build Windows](https://github.com/arturcardoalves/Urna-Eletronica-Escolar/actions/workflows/build-windows-installer.yml/badge.svg)](https://github.com/arturcardoalves/Urna-Eletronica-Escolar/actions/workflows/build-windows-installer.yml)
-![Versão do código](https://img.shields.io/badge/c%C3%B3digo-2.3.0-176b46)
+![Versão do código](https://img.shields.io/badge/c%C3%B3digo-2.4.0-176b46)
 ![Plataforma](https://img.shields.io/badge/plataforma-Windows%20x64-155eef)
 ![Uso](https://img.shields.io/badge/uso-educacional-334155)
 
-**[Baixar instalador](https://github.com/arturcardoalves/Urna-Eletronica-Escolar/actions/workflows/build-windows-installer.yml)** · **[Começar a usar](docs/GUIA_2.3.0.md)** · **[Ver as telas](docs/TELAS.md)**
+**[Baixar instalador](https://github.com/arturcardoalves/Urna-Eletronica-Escolar/actions/workflows/build-windows-installer.yml)** · **[Começar a usar](docs/GUIA_2.4.0.md)** · **[Ver as telas](docs/TELAS.md)**
 
 [Instalação](#instalacao) · [Rede](#rede) · [Impressora](#impressora) · [Segurança](#seguranca) · [Testes](#testes) · [Dúvidas](docs/PERGUNTAS_FREQUENTES.md)
 
@@ -57,22 +57,6 @@ Capturas da **interface oficial do projeto**, com nomes e chapas fictícios. For
 
 **[Abrir o passeio completo pelas telas →](docs/TELAS.md)**
 
-## Publicação pública sem conectar a eleição à internet
-
-A Central assina a configuração, a zerésima e o BU de cada urna. Um pendrive leva os pacotes ao **Transmissor Eleitoral**, que confere a chave e solicita confirmação antes de enviar ao portal.
-
-O mesmo instalador oferece **três funções**: Central/Administrador/Mesa, Urna e **Publicação de resultados**. No computador com internet, escolha a terceira opção e abra o atalho **Publicação de Resultados** para usar o Transmissor Eleitoral.
-
-O portal pode funcionar gratuitamente com **GitHub + Cloudflare Workers/D1**, no endereço HTTPS `workers.dev`. Mostra chapas, PDFs, resultados por urna, pendências, totalização parcial/definitiva e histórico de versões. As urnas continuam funcionando sem internet, mesmo quando o portal está indisponível.
-
-Os dois QR Codes permitem consulta pública e conferência criptográfica. Para reconhecer o emissor, compare a impressão digital da chave com a referência da comissão. Dados pessoais dos eleitores e votos individuais não fazem parte dos pacotes.
-
-**[Operar publicação por pendrive](docs/PUBLICACAO_E_PORTAL.md)** · **[Configurar Cloudflare gratuito](docs/PORTAL_CLOUDFLARE.md)** · **[Conferir assinaturas e entender limites](docs/PROTOCOLO_PUBLICACAO.md)**
-
-![Prévia do portal Cloudflare, conferida localmente com dados fictícios](docs/imagens/portal-publico.png)
-
-*Captura do Worker real em ambiente local de teste. As eleições fictícias usadas na validação não são carregadas na produção.*
-
 ## O que o sistema oferece
 
 | Recurso | Na prática |
@@ -105,8 +89,8 @@ O instalador inclui o ambiente necessário: **não é preciso instalar Python pa
 
 1. Entre no GitHub e abra [Actions → Build Windows Installer](https://github.com/arturcardoalves/Urna-Eletronica-Escolar/actions/workflows/build-windows-installer.yml).
 2. Escolha uma execução concluída com sucesso, conferindo o commit que contém a atualização desejada.
-3. Em **Artifacts**, baixe **Instalador-Urna-Escolar-2.3.0** e extraia o ZIP.
-4. Execute **Instalar_Urna_Escolar_2.3.0.exe**.
+3. Em **Artifacts**, baixe **Instalador-Urna-Escolar-2.4.0** e extraia o ZIP.
+4. Execute **Instalar_Urna_Escolar_2.4.0.exe**.
 
 O download de artefatos exige uma sessão no GitHub e acesso de leitura ao repositório. [Instruções oficiais do GitHub](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/download-workflow-artifacts).
 
@@ -125,7 +109,7 @@ O download de artefatos exige uma sessão no GitHub e acesso de leitura ao repos
 
 **O primeiro administrador é criado no próprio computador da Central**, pelo botão do aplicativo. Não há senha universal. A senha deve ter pelo menos 10 caracteres.
 
-**[Guia completo, com abertura, encerramento e solução de problemas →](docs/GUIA_2.3.0.md)**
+**[Guia completo, com abertura, encerramento e solução de problemas →](docs/GUIA_2.4.0.md)**
 
 <a id="rede"></a>
 
@@ -158,7 +142,7 @@ A impressora fica **conectada por USB ao computador da Urna**. Comece pelo modo 
 
 > **Se o voto não for impresso:** um voto já registrado não é desfeito pela falha da impressora. Chame o mesário, confira papel/cabo/driver e resolva a pendência pela Mesa. Não libere outro voto para “compensar”. Uma reimpressão repete a ficha do voto existente; não deve criar outro voto.
 
-A impressão incerta não é repetida automaticamente. Recolha e controle cópias parciais ou duplicadas. “Enviado à impressora” não comprova que o papel saiu: o equipamento pode aceitar o trabalho mesmo sem papel. [Leia o procedimento de falha e recuperação](docs/GUIA_2.3.0.md#se-algo-falhar).
+A impressão incerta não é repetida automaticamente. Recolha e controle cópias parciais ou duplicadas. “Enviado à impressora” não comprova que o papel saiu: o equipamento pode aceitar o trabalho mesmo sem papel. [Leia o procedimento de falha e recuperação](docs/GUIA_2.4.0.md#se-algo-falhar).
 
 <a id="seguranca"></a>
 
@@ -210,7 +194,7 @@ O selo no topo aponta para o workflow. Ele não é uma certificação de seguran
 
 **[Roteiro de ensaio e mapa dos testes →](docs/TESTES_E_VALIDACAO.md)** · [Registro técnico das revisões](docs/REVISAO_CODIGO.md)
 
-Na entrega de publicação de 13/10/2026, **97 testes da suíte passaram**, além da validação local do Worker/D1 e do runtime Windows com Python externo fora do PATH. Confira o [relatório com resultados e limitações](docs/ENTREGA_PUBLICACAO_2026-10-13.md). Publicação na conta Cloudflare e ensaio físico continuam necessários.
+A versão **2.4.0** restaura o layout gráfico de zerésima e boletim também no driver Windows, usa **Delete** como CORRIGE padrão e remove publicação online, QR Codes e transporte de pacotes por pendrive. Consulte [a validação desta versão](docs/ENTREGA_2.4.0.md).
 
 ## Depois do teste e antes da eleição real
 
@@ -222,7 +206,7 @@ Na entrega de publicação de 13/10/2026, **97 testes da suíte passaram**, alé
 
 ## Versões e desenvolvimento
 
-O código usa a versão **2.3.0**. Nesta revisão: cartão compacto de confirmação, CORRIGIR vermelho, som sempre habilitado, cadastro apenas com nome/turma e aviso de impressão na tela FIM/VOTOU. Confira também a data e o commit do instalador: revisões diferentes podem exibir o mesmo número de versão.
+O código usa a versão **2.4.0**. Nesta revisão: cartão compacto de confirmação, CORRIGIR vermelho, som sempre habilitado, cadastro apenas com nome/turma e aviso de impressão na tela FIM/VOTOU. Confira **2.4.0** na Central, no aplicativo da Urna e nos documentos emitidos.
 
 [Histórico de alterações](docs/CHANGELOG.md) · [Gerar EXE pelo GitHub ou PowerShell](docs/GERAR_EXE_NO_GITHUB.md) · [Demonstração independente com dados fictícios](demo/README.md)
 
@@ -233,8 +217,6 @@ O código usa a versão **2.3.0**. Nesta revisão: cartão compacto de confirma�
 .github/workflows/          Compilação Windows e artefatos
 installer/                  Aplicativo Windows, instalador e pacote de fontes
 tests/                      Testes de interface, servidor, impressão e instalação
-portal/cloudflare/          Portal público para Workers Free + D1
-transmitter/                Transmissor Eleitoral e verificador offline
 docs/                       Guias e capturas revisadas com dados fictícios
 demo/                       Demonstração separada; não é a eleição real
 URNA_ESCOLAR_SOURCE/

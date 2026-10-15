@@ -17,7 +17,7 @@ from pathlib import Path
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 
-VERSION = "2.3.0"
+VERSION = "2.4.0"
 DEFAULT_CUT_FEED_MM = 30
 MIN_CUT_FEED_MM = 10
 MAX_CUT_FEED_MM = 80

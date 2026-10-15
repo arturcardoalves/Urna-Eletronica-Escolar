@@ -12,8 +12,6 @@ on:
       - 'docs/**'
       - 'installer/**'
       - 'URNA_ESCOLAR_SOURCE/**'
-      - 'portal/**'
-      - 'transmitter/**'
       - '.github/workflows/build-windows-installer.yml'
 
 jobs:
@@ -31,7 +29,7 @@ jobs:
           python-version: '3.13'
           architecture: 'x64'
 
-      - name: Configurar Node 24 para os testes de interface e verificação
+      - name: Configurar Node 24 para os testes de interface
         uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -40,14 +38,14 @@ jobs:
         shell: powershell
         run: choco install innosetup -y --no-progress
 
-      - name: Gerar, testar e montar instalador 2.3.0
+      - name: Gerar, testar e montar instalador 2.4.0
         shell: powershell
         run: .\installer\BUILD_WINDOWS.ps1 -TestarInstalacao
 
       - name: Verificar instalador final
         shell: powershell
         run: |
-          $file = '.\installer\output\Instalar_Urna_Escolar_2.3.0.exe'
+          $file = '.\installer\output\Instalar_Urna_Escolar_2.4.0.exe'
           if (!(Test-Path $file)) {
             Write-Error "Instalador final não encontrado: $file"
             exit 1
@@ -55,16 +53,9 @@ jobs:
           Get-FileHash $file -Algorithm SHA256
           Get-Item $file | Format-List Name,Length,LastWriteTime
 
-      - name: Verificar primeiro uso e publicacao nos executaveis
+      - name: Verificar primeiro uso nos executaveis
         shell: powershell
         run: .\.build-venv\Scripts\python.exe .\installer\smoke_frozen.py
-
-      - name: Publicar Transmissor Eleitoral
-        uses: actions/upload-artifact@v4
-        with:
-          name: Transmissor-Eleitoral-Windows
-          path: dist/TransmissorEleitoral.exe
-          if-no-files-found: error
 
       - name: Gerar e testar demonstracao ficticia independente
         shell: powershell
@@ -80,30 +71,30 @@ jobs:
       - name: Publicar instalador como artefato
         uses: actions/upload-artifact@v4
         with:
-          name: Instalador-Urna-Escolar-2.3.0
-          path: installer/output/Instalar_Urna_Escolar_2.3.0.exe
+          name: Instalador-Urna-Escolar-2.4.0
+          path: installer/output/Instalar_Urna_Escolar_2.4.0.exe
           if-no-files-found: error
 
       - name: Montar pacote de fonte limpo
         shell: powershell
         run: |
           New-Item -ItemType Directory -Force .\release-output | Out-Null
-          python .\installer\package_source.py --output .\release-output\Urna_Escolar_2.3.0_Fonte_Limpa.zip
+          python .\installer\package_source.py --output .\release-output\Urna_Escolar_2.4.0_Fonte_Limpa.zip
 
       - name: Publicar pacote de fonte limpo
         uses: actions/upload-artifact@v4
         with:
-          name: Urna-Eletronica-Escolar-Fonte-Limpa-2.3.0
+          name: Urna-Eletronica-Escolar-Fonte-Limpa-2.4.0
           path: |
-            release-output/Urna_Escolar_2.3.0_Fonte_Limpa.zip
-            release-output/Urna_Escolar_2.3.0_Fonte_Limpa.zip.sha256.txt
+            release-output/Urna_Escolar_2.4.0_Fonte_Limpa.zip
+            release-output/Urna_Escolar_2.4.0_Fonte_Limpa.zip.sha256.txt
           if-no-files-found: error
 
       - name: Guardar logs em caso de falha
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Logs-instalacao-2.3.0
+          name: Logs-instalacao-2.4.0
           path: |
             installer/build-log.txt
             test-results/**/*.xml

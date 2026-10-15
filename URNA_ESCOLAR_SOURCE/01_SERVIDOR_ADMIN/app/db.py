@@ -30,7 +30,7 @@ def init_db() -> None:
             "voter_identification_enabled": "BOOLEAN NOT NULL DEFAULT 1",
             "voter_lookup_mode": "TEXT NOT NULL DEFAULT 'SEARCH_LIST'",
             "keyboard_confirm_key": "TEXT NOT NULL DEFAULT 'Enter'",
-            "keyboard_correct_key": "TEXT NOT NULL DEFAULT 'Backspace'",
+            "keyboard_correct_key": "TEXT NOT NULL DEFAULT 'Delete'",
             "keyboard_blank_key": "TEXT NOT NULL DEFAULT 'b'",
             "paper_instruction_text": "TEXT NOT NULL DEFAULT 'Dobre e coloque na urna.'",
             "paper_change_warning_enabled": "BOOLEAN NOT NULL DEFAULT 0",
@@ -48,6 +48,13 @@ def init_db() -> None:
             if col not in election_cols:
                 conn.exec_driver_sql(f"ALTER TABLE elections ADD COLUMN {col} {ddl}")
         conn.exec_driver_sql("UPDATE elections SET election_uuid = lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab', abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6))) WHERE election_uuid IS NULL OR election_uuid = ''")
+
+        conn.exec_driver_sql("CREATE TABLE IF NOT EXISTS app_migrations (name TEXT PRIMARY KEY)")
+        migration = '2.4.0-delete-key'
+        applied = conn.exec_driver_sql("SELECT 1 FROM app_migrations WHERE name = ?", (migration,)).first()
+        if not applied:
+            conn.exec_driver_sql("UPDATE elections SET keyboard_correct_key = 'Delete' WHERE state = 'CONFIG' AND keyboard_correct_key = 'Backspace'")
+            conn.exec_driver_sql("INSERT INTO app_migrations(name) VALUES (?)", (migration,))
 
         archive_cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(election_archives)").fetchall()}
         archive_additions = {

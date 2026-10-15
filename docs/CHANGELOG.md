@@ -1,5 +1,15 @@
 # Histórico de versões
 
+## 2.4.0 — impressão gráfica e operação local
+
+- Zerésima e boletim com o layout gráfico no driver Windows e no ESC/POS.
+- Paginação em espaços brancos e margem antes do corte.
+- Delete como tecla padrão de CORRIGE; migração limitada a eleições não lacradas.
+- Remoção de QR Codes, portal, Transmissor, exportação de publicação por USB e suas dependências.
+- Instalador com duas funções e testes de regressão de impressão e atualização.
+
+
+
 Este arquivo registra somente versões e alterações que podem ser comprovadas pelo código e pelos documentos preservados no repositório.
 
 ## Revisão de 12/10/2026 — código 2.3.0
@@ -55,12 +65,3 @@ Este arquivo registra somente versões e alterações que podem ser comprovadas 
 - Os arquivos antigos de geração do EXE foram retirados quando suas funções passaram para `installer/BUILD_WINDOWS.ps1`, o aplicativo unificado e o workflow do GitHub.
 
 Não há garantia de compatibilidade de bancos ou instaladores antigos fora dos procedimentos de atualização descritos na versão 2.3.0.
-# Publicação offline e portal — 13/10/2026
-
-- Configuração pública vinculada à lacração, chave Ed25519 por eleição e pacotes assinados sem dados individuais de eleitores.
-- Zerésima/BU por urna com PDFs públicos e dois QR Codes; exportação automática para uma mídia USB e reexportação idêntica.
-- Transmissor Eleitoral Windows independente, verificação offline, confirmação do operador, HTTPS e comprovante idempotente.
-- Portal Cloudflare Workers + D1 preparado para plano gratuito, arquivo de eleições, parcial/definitivo, versões e verificação pública.
-- Correção do BU de urna sem votos: mantém zero, sem herdar o resultado agregado de outras urnas.
-- Testes de assinatura, adulteração, transmissão HTTPS, recuperação de resposta perdida, mídia, concorrência e integração; validação local Workers/D1.
-- Hospedagem externa e impressão física permanecem sujeitas à configuração e ensaio documentados.

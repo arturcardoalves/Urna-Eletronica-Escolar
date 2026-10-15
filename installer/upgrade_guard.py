@@ -29,7 +29,7 @@ def check_and_backup(home):
     _reject_links(home)
     # Preserve keys/archives even if setup was interrupted before creating a DB.
     if not path.exists():
-        target=home/"Backups"/datetime.now().strftime("antes-2.3.0-%Y%m%d-%H%M%S-%f")
+        target=home/"Backups"/datetime.now().strftime("antes-2.4.0-%Y%m%d-%H%M%S-%f")
         shutil.copytree(data, target/"Servidor")
         return
     with closing(sqlite3.connect(path.resolve().as_uri()+"?mode=ro",uri=True)) as db:
@@ -38,7 +38,7 @@ def check_and_backup(home):
             row=db.execute("SELECT state FROM elections LIMIT 1").fetchone()
             if row and row[0] in ("SEALED","OPEN"):
                 raise RuntimeError("Existe uma eleição lacrada ou aberta. Termine e arquive essa eleição na versão atual antes de atualizar. Nenhum arquivo foi substituído.")
-        target=home/"Backups"/datetime.now().strftime("antes-2.3.0-%Y%m%d-%H%M%S-%f")
+        target=home/"Backups"/datetime.now().strftime("antes-2.4.0-%Y%m%d-%H%M%S-%f")
         target.mkdir(parents=True,exist_ok=False)
         # Copy every auxiliary/archive file. Each SQLite DB is copied through
         # SQLite's backup API, including committed pages still in its WAL.

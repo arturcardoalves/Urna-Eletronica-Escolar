@@ -62,7 +62,7 @@ class Election(Base):
     result_copies: Mapped[int] = mapped_column(Integer, default=3)
     zero_signature_fields: Mapped[bool] = mapped_column(Boolean, default=True)
     keyboard_confirm_key: Mapped[str] = mapped_column(String(40), default="Enter")
-    keyboard_correct_key: Mapped[str] = mapped_column(String(40), default="Backspace")
+    keyboard_correct_key: Mapped[str] = mapped_column(String(40), default="Delete")
     keyboard_blank_key: Mapped[str] = mapped_column(String(40), default="b")
     paper_instruction_text: Mapped[str] = mapped_column(String(180), default="Dobre e coloque na urna.")
     config_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -319,27 +319,3 @@ class NativeVoteState(Base):
     job_id: Mapped[str] = mapped_column(String(36))
     encrypted_payload: Mapped[str] = mapped_column(Text, default="")
     state: Mapped[str] = mapped_column(String(16), default="PENDING")
-
-# Public artifacts are immutable snapshots, separate from voter/ballot tables.
-from sqlalchemy import LargeBinary, UniqueConstraint
-
-class PublicationConfig(Base):
-    __tablename__ = 'publication_configs'
-    election_id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    public_url: Mapped[str] = mapped_column(String(160))
-    fingerprint: Mapped[str] = mapped_column(String(64))
-
-class PublicationDocument(Base):
-    __tablename__ = 'publication_documents'
-    __table_args__ = (UniqueConstraint('election_id','kind','urn_code','revision'),)
-    id: Mapped[str] = mapped_column(String(36), primary_key=True)
-    election_id: Mapped[str] = mapped_column(String(36), index=True)
-    kind: Mapped[str] = mapped_column(String(20))
-    urn_code: Mapped[str] = mapped_column(String(20), default='')
-    revision: Mapped[int] = mapped_column(Integer, default=1)
-    digest: Mapped[str] = mapped_column(String(64))
-    package_hash: Mapped[str] = mapped_column(String(64))
-    package: Mapped[bytes] = mapped_column(LargeBinary)
-    qr_json: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    exported: Mapped[bool] = mapped_column(Boolean, default=False)

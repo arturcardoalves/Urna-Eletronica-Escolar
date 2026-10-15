@@ -27,7 +27,6 @@ from .auth import create_session, current_user, get_db, require_role
 from .config import APP_VERSION, BASE_DIR, MAX_URNS, DB_PATH, PUBLIC_KEY_PATH, PRIVATE_KEY_PATH, PRIVATE_KEY_PASSWORD_PATH, DATA_DIR
 from .db import init_db
 from .models import Ballot, DevicePrintCommand, Election, ElectionArchive, ElectionState, Occurrence, Setting, Slate, SlateMember, Urn, UrnStatus, User, UserRole, Voter, VoterExceptionPermit, VoterStatus, VotingAuthorization, AnonymousVotingAuthorization, AuditEvent, LoginGuard, Session as LoginSession, UrnDeviceSession
-from . import publication
 from .reports import audit_log_pdf, final_result_pdf, occurrences_pdf, voter_list_pdf, zero_pdf
 from .security import canonical_json, hash_device_secret, hash_password, password_is_acceptable, random_token, sha256_text, verify_password
 from .tally_service import tally_closed_election, verify_final_tally_integrity
@@ -301,14 +300,14 @@ def admin_election(
     paper_show_slate_number: str | None = Form(None), paper_show_slate_name: str | None = Form(None),
     paper_show_members: str | None = Form(None), paper_show_instruction: str | None = Form(None),
     zero_copies: int = Form(3), result_copies: int = Form(3), zero_signature_fields: str | None = Form(None),
-    keyboard_confirm_key: str = Form("Enter"), keyboard_correct_key: str = Form("Backspace"),
+    keyboard_confirm_key: str = Form("Enter"), keyboard_correct_key: str = Form("Delete"),
     keyboard_blank_key: str = Form("b"), paper_instruction_text: str = Form("Dobre e coloque na urna."),
     user: User = Depends(require_role(UserRole.ADMIN.value)), db: Session = Depends(get_db),
 ):
     election = get_election(db)
     if election.state != ElectionState.CONFIG.value:
         raise HTTPException(409, "As configurações administrativas ficam bloqueadas depois da lacração. A abertura e o encerramento são feitos pela Mesa Eleitoral.")
-    captured_keys = [(keyboard_confirm_key or "Enter").strip(), (keyboard_correct_key or "Backspace").strip(), (keyboard_blank_key or "b").strip()]
+    captured_keys = [(keyboard_confirm_key or "Enter").strip(), (keyboard_correct_key or "Delete").strip(), (keyboard_blank_key or "b").strip()]
     if len({k.lower() for k in captured_keys}) != 3:
         raise HTTPException(400, "CONFIRMA, CORRIGE e BRANCO precisam usar teclas diferentes.")
     if not name.strip() or len(name.strip()) > 160 or len(institution_name.strip()) > 180:
@@ -341,7 +340,7 @@ def admin_election(
     election.result_copies = max(1, min(result_copies, 20))
     election.zero_signature_fields = zero_signature_fields is not None
     election.keyboard_confirm_key = (keyboard_confirm_key or "Enter").strip()
-    election.keyboard_correct_key = (keyboard_correct_key or "Backspace").strip()
+    election.keyboard_correct_key = (keyboard_correct_key or "Delete").strip()
     election.keyboard_blank_key = (keyboard_blank_key or "b").strip()
     election.paper_instruction_text = (paper_instruction_text or "Dobre e coloque na urna.").strip()
     append_audit(db, "ELECTION_SETTINGS_UPDATED", user.username, {"state": election.state})
@@ -764,11 +763,8 @@ def set_urn_voting_mode(urn_id: int, voting_mode_override: str = Form("INHERIT")
 
 @app.post("/admin/seal")
 def seal(user: User = Depends(require_role(UserRole.ADMIN.value)), db: Session = Depends(get_db)):
-    def seal_and_publish(db, actor):
-        seal_election(db, actor)
-        publication.prepare(db, "configuration", actor)
-    domain_call(db, seal_and_publish, user.username)
-    return RedirectResponse("/admin/publication", status_code=303)
+    domain_call(db, seal_election, user.username)
+    return RedirectResponse("/admin", status_code=303)
 
 
 
@@ -942,7 +938,6 @@ def mesario_open_prepare(
         raise HTTPException(409, "Selecione a impressora destas urnas antes da abertura: " + ", ".join(missing))
 
     _ensure_zero_snapshot(db, user.username, "mesario_open")
-    publication.prepare(db, "zero", user.username)
     queued = _queue_device_document(db, "zero", lambda urn: _zero_thermal_text(db, urn), election.zero_copies)
     ticket = random_token(24)
     _ticket_setting(db, "mesario_open_ticket_hash", sha256_text(ticket))
@@ -1001,7 +996,6 @@ def mesario_close(
         private_key_bytes, key_password = load_internal_private_key()
         close_election(db, user.username)
         result = tally_closed_election(db, private_key_bytes, key_password, user.username)
-        publication.prepare(db, "result", user.username)
         queued = _queue_device_document(db, "result", lambda urn: _result_thermal_text(db, urn), election.result_copies)
         close_ticket = random_token(24)
         _ticket_setting(db, "mesario_close_ticket_hash", sha256_text(close_ticket))
@@ -1793,9 +1787,6 @@ def _queue_device_document(db: Session, kind: str, text, copies: int = 1, urn_co
             paper = _result_thermal_payload(db, urn)
             title = f"Boletim de Urna - {urn.code}"
 
-        if paper is not None:
-            paper["publication"] = publication.qr_for(db, kind, urn)
-
         payload = json.dumps({
             "text": urn_text,
             "copies": max(1, min(copies, 20)),
@@ -2077,6 +2068,3 @@ def health(db: Session = Depends(get_db)):
 
 from . import deployment
 deployment.register(app, templates)
-
-from .publication_routes import register as register_publication
-register_publication(app, templates)

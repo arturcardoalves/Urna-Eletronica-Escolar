@@ -1,6 +1,6 @@
 # Dúvidas do dia a dia
 
-[← Página do projeto](../README.md) · [Guia de instalação](GUIA_2.3.0.md)
+[← Página do projeto](../README.md) · [Guia de instalação](GUIA_2.4.0.md)
 
 ## Preciso de internet para votar?
 
@@ -52,7 +52,7 @@ O mini executável em `demo/` permite testar interação com dados fictícios, s
 
 ## O que são Logs-instalacao no GitHub?
 
-São registros das etapas de compilação e teste. Ajudam a entender por que um build falhou; não são o instalador. Para instalar, baixe o artefato **Instalador-Urna-Escolar-2.3.0** de uma execução bem-sucedida.
+São registros das etapas de compilação e teste. Ajudam a entender por que um build falhou; não são o instalador. Para instalar, baixe o artefato **Instalador-Urna-Escolar-2.4.0** de uma execução bem-sucedida.
 
 ## Como começo de novo depois do teste?
 
@@ -62,10 +62,6 @@ São registros das etapas de compilação e teste. Ajudam a entender por que um 
 
 Não. A atualização é bloqueada enquanto a eleição estiver lacrada ou aberta. Planeje atualizações antes da preparação final. Alterações no código e nos arquivos podem invalidar a conferência de integridade de uma eleição lacrada.
 
-## QR code prova que o boletim é autêntico?
+## Existe publicação na internet?
 
-Um QR de texto antigo, por si só, não comprova autenticidade. Com a publicação habilitada antes da lacração, há QR de consulta e QR com resumo Ed25519 assinado. Compare a impressão digital da chave com a referência da comissão e confira os valores do manifesto/PDF com o papel. [Como verificar](PROTOCOLO_PUBLICACAO.md).
-
-## O portal exige internet na urna?
-
-Não. A Central assina e exporta para um pendrive. Outro computador com internet usa o Transmissor Eleitoral para enviar ao portal. A votação continua offline se o site estiver indisponível. [Operação](PUBLICACAO_E_PORTAL.md) e [Cloudflare gratuito](PORTAL_CLOUDFLARE.md).
+A versão 2.4.0 funciona somente na rede local. A publicação online, QR Codes e exportação eleitoral por pendrive foram retirados. Os relatórios continuam disponíveis na Administração.

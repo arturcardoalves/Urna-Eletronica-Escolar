@@ -10,7 +10,6 @@ Uma simulação ajuda a encontrar falhas de lógica, mas não mede se o papel sa
 
 ## Registro desta revisão da documentação — 12/10/2026
 
-**Entrega atual de publicação — 13/10/2026:** a suíte completa passou com **97 testes**, o Worker/D1 passou em três suítes locais, os executáveis e o instalador foram gerados, e o runtime/primeiro acesso foi conferido com Python externo fora do PATH. Veja as evidências, simulações e limitações no [relatório desta entrega](ENTREGA_PUBLICACAO_2026-10-13.md). O registro abaixo descreve a revisão anterior da documentação.
 
 | Item | Resultado / evidência |
 |---|---|
@@ -37,7 +36,7 @@ As capturas de votação foram feitas com os templates, CSS e JavaScript oficiai
 | `tests/test_windows_delivery.py` | Entrega e execução Windows. |
 | `tests/test_distribution.py` | Filtragem e integridade do pacote de código. |
 
-O [workflow Windows](../.github/workflows/build-windows-installer.yml) chama o [script de build](../installer/BUILD_WINDOWS.ps1), que executa a suíte Python, gera os executáveis, verifica HTTPS e faz testes de inicialização/instalação no ambiente previsto. O resultado vale para aquela execução, não para todo instalador que tenha o número 2.3.0.
+O [workflow Windows](../.github/workflows/build-windows-installer.yml) chama o [script de build](../installer/BUILD_WINDOWS.ps1), que executa a suíte Python, gera os executáveis, verifica HTTPS e faz testes de inicialização/instalação no ambiente previsto. O resultado vale para aquela execução, não para todo instalador que tenha o número 2.4.0.
 
 ## Ensaio antes da eleição
 
@@ -60,3 +59,8 @@ Use dados fictícios. Registre data, versão/commit, computadores, modelo da imp
 - [ ] Preparar a eleição real usando o procedimento de nova eleição/reset adequado.
 
 Pare o ensaio e corrija qualquer divergência antes de usar dados reais. Não provoque falhas para testar durante a eleição real.
+
+
+## Versão 2.4.0
+
+Confira os testes e limitações da entrega em [ENTREGA_2.4.0.md](ENTREGA_2.4.0.md).

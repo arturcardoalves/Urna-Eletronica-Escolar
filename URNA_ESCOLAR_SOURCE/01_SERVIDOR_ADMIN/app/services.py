@@ -126,10 +126,6 @@ def election_config_payload(db: Session) -> dict:
         ] if election.voter_identification_enabled else []),
     }
 
-    from .publication import seal_binding
-    public = seal_binding(db, election.election_uuid)
-    if public:
-        payload["publication"] = public
     return payload
 
 

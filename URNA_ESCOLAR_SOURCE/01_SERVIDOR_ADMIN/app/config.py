@@ -11,5 +11,5 @@ KEY_DIR = DATA_DIR / "keys"
 PUBLIC_KEY_PATH = KEY_DIR / "election_public.pem"
 PRIVATE_KEY_PATH = KEY_DIR / "election_private.pem"
 PRIVATE_KEY_PASSWORD_PATH = KEY_DIR / "election_private.secret"
-APP_VERSION = "2.3.0"
+APP_VERSION = "2.4.0"
 MAX_URNS = 3

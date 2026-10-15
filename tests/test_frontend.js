@@ -39,6 +39,7 @@ class Element {
 
 function createUI(script, dataset = {}) {
   const elements = new Map();
+  const listeners = {};
   const get = id => {
     if (!elements.has(id)) elements.set(id, new Element());
     return elements.get(id);
@@ -57,7 +58,7 @@ function createUI(script, dataset = {}) {
       querySelectorAll: () => [],
       getElementById: get,
       createElement: () => new Element(),
-      addEventListener() {},
+      addEventListener(name, handler) { (listeners[name] ||= []).push(handler); },
     },
     window: {URN_CODES: ['URNA01'], SLATE_DATA: [10], SLATE_DETAILS: {'10': {number: 10, name: 'Chapa fictícia', members: []}}},
     sessionStorage: storage(), localStorage: storage(),
@@ -71,8 +72,18 @@ function createUI(script, dataset = {}) {
     alert() {},
   });
   vm.runInContext(fs.readFileSync(path.join(__dirname, '../URNA_ESCOLAR_SOURCE/01_SERVIDOR_ADMIN/app/static', script), 'utf8'), context);
-  return {context, get, run: code => vm.runInContext(code, context)};
+  return {context, get, listeners, run: code => vm.runInContext(code, context)};
 }
+
+test('Delete corrects the numeric ballot by default; Backspace does not', async () => {
+  const ui = createUI('urna.js', {mode:'NUMERIC'});
+  ui.run("digits='10'; currentToken='test'; ballot.classList.remove('hidden')");
+  const handler=ui.listeners.keydown.at(-1);
+  await handler({key:'Backspace',code:'Backspace',repeat:false,preventDefault(){}});
+  assert.equal(ui.run('digits'),'10');
+  await handler({key:'Delete',code:'Delete',repeat:false,preventDefault(){}});
+  assert.equal(ui.run('digits'),'');
+});
 
 const response = (data, status = 200) => ({ok: status >= 200 && status < 300, status, json: async () => data});
 

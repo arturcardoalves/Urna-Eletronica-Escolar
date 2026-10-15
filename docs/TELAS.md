@@ -1,8 +1,8 @@
 # Conheça a votação por mouse
 
-[← Página do projeto](../README.md) · [Instalar e usar](GUIA_2.3.0.md)
+[← Página do projeto](../README.md) · [Instalar e usar](GUIA_2.4.0.md)
 
-Estas capturas usam a interface oficial do código 2.3.0, com dados fictícios e respostas de servidor/impressão simuladas. A imagem de confirmação já inclui o cartão compacto e o botão CORRIGIR vermelho. Não são telas do mini executável de demonstração.
+Estas capturas usam a interface oficial do código 2.4.0, com dados fictícios e respostas de servidor/impressão simuladas. A imagem de confirmação já inclui o cartão compacto e o botão CORRIGIR vermelho. Não são telas do mini executável de demonstração.
 
 ## 1. Aguardando o eleitor
 

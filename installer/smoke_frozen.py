@@ -1,13 +1,12 @@
 """Exercise newly compiled Windows EXEs with disposable data and no Python in PATH.
 
 This does not install anything or use the school's database/printer/USB.
-Run on the build machine after BUILD_WINDOWS.ps1 and BUILD_TRANSMITTER.ps1.
+Run on the build machine after BUILD_WINDOWS.ps1.
 """
 import http.cookiejar
 import json
 import os
 from pathlib import Path
-import re
 import secrets
 import socket
 import ssl
@@ -42,7 +41,7 @@ def run():
                    PATH=os.environ['SystemRoot'] + '\\System32;' + os.environ['SystemRoot'])
         for name in ('PYTHONHOME', 'PYTHONPATH', 'URNA_PARENT_PID', 'URNA_DATA_DIR', 'URNA_DB_PATH'):
             env.pop(name, None)
-        for relative in ('dist/UrnaEscolar/UrnaEscolar.exe', 'dist/TransmissorEleitoral.exe'):
+        for relative in ('dist/UrnaEscolar/UrnaEscolar.exe',):
             subprocess.run([str(ROOT / relative), '--self-test'], env=env,
                            creationflags=subprocess.CREATE_NO_WINDOW, timeout=90, check=True)
         server = subprocess.Popen([str(ROOT / 'dist/UrnaEscolarServidor/UrnaEscolarServidor.exe')],
@@ -93,29 +92,13 @@ def run():
                                      'password': secrets.token_urlsafe(24), 'role': 'MESARIO'}, 303)
             request('/admin/urns', {'code': 'TESTE01', 'name': 'Urna do ensaio isolado',
                                     'device_secret': secrets.token_urlsafe(24)}, 303)
-            request('/admin/publication/configure', {'url': 'https://eleicao.example'}, 303)
-            page = request('/admin/publication').decode('utf-8')
-            assert 'https://eleicao.example' in page
-            assert re.search(r'[a-f0-9]{64}', page)
-            keys = list((data / 'UrnaEscolar/Servidor/publication_keys').glob('*.key'))
-            assert len(keys) == 1 and len(keys[0].read_bytes()) > 32  # DPAPI, not raw key.
-            assert 'BEGIN PRIVATE KEY' not in keys[0].read_bytes().decode('ascii', errors='ignore')
             request('/admin/seal', {}, 303)
-            page = request('/admin/publication').decode('utf-8')
-            match = re.search(r'/admin/publication/([a-f0-9-]{36})/package', page)
-            assert match, 'Pacote de lacração não foi gerado pelo servidor congelado.'
-            raw = request('/admin/publication/' + match[1] + '/package')
-            # Inspect public content; no private voter name may enter the package.
-            import io
-            import zipfile
-            with zipfile.ZipFile(io.BytesIO(raw)) as package:
-                manifest = package.read('manifest.json')
-                assert b'Aluno fict' not in manifest
-                assert package.read('document.pdf').startswith(b'%PDF')
-            request('/admin/publication/configure', {'url': 'https://other.example'}, 409)
+            request('/admin')
+            request('/admin/publication', expected=404)
+            request('/api/local/publication', expected=404)
             request('/admin/voters/manual', {'name': 'Outro aluno', 'class_code': 'Turma teste'}, 409)
             print('EXEs: autotestes, HTTPS com CA/hostname, primeiro ADMIN, aluno sem matrícula/turno,')
-            print('chapa, chave DPAPI, lacração, pacote/PDF público e bloqueios pós-lacração: OK.')
+            print('chapa, lacração, ausência de publicação e bloqueios pós-lacração: OK.')
         finally:
             if server.poll() is None:
                 server.terminate()

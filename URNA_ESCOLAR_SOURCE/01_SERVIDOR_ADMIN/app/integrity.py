@@ -58,7 +58,7 @@ def software_manifest() -> dict:
                     continue
                 entries.append({"path": path.relative_to(BASE_DIR).as_posix(), "sha256": _sha256_file(path)})
     else:
-        roots = [BASE_DIR / "app", BASE_DIR / "print_agent", BASE_DIR / "scripts", BASE_DIR / "publication_core"]
+        roots = [BASE_DIR / "app", BASE_DIR / "print_agent", BASE_DIR / "scripts"]
         allowed_suffixes = {".py", ".html", ".js", ".css"}
         excluded_parts = {"__pycache__", "sounds"}
         for root in roots:

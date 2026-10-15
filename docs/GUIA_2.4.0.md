@@ -1,10 +1,10 @@
-# Urna Eletrônica Escolar 2.3.0 — instalação unificada
+# Urna Eletrônica Escolar 2.4.0 — instalação unificada
 
 ## O arquivo que você usa
 
-Use o mesmo **Instalar_Urna_Escolar_2.3.0.exe** nos dois computadores Windows 10/11 de 64 bits. O programa inclui seu próprio runtime; não usa o Python instalado no computador e não pede pip nem terminal. A instalação requer uma conta com permissão de administrador. O uso diário é pela conta normal do Windows.
+Use o mesmo **Instalar_Urna_Escolar_2.4.0.exe** nos dois computadores Windows 10/11 de 64 bits. O programa inclui seu próprio runtime; não usa o Python instalado no computador e não pede pip nem terminal. A instalação requer uma conta com permissão de administrador. O uso diário é pela conta normal do Windows.
 
-O instalador oferece três opções: **Central da Eleição + Mesa Eleitoral**, **Urna de votação + impressora USB** e **Publicação de resultados — Transmissor Eleitoral**. A terceira opção é para o computador com internet: instala o transmissor e cria o atalho **Publicação de Resultados**, sem instalar servidor ou urna em uma instalação nova e sem iniciar automaticamente a votação. É o mesmo arquivo EXE para as três funções; escolha a função do computador durante a instalação.
+O instalador oferece duas opções: **Central da Eleição + Mesa Eleitoral** e **Urna de votação + impressora USB**. Escolha a função do computador.
 
 Antes de desconectar a internet, instale Microsoft Edge, a fonte **Atkinson Hyperlegible Regular e Bold** nos dois PCs e o driver da impressora **apenas no PC da urna**. Confira data e hora. Atualize somente com a eleição em configuração ou encerrada; a atualização faz backup e bloqueia eleições lacradas/abertas.
 
@@ -14,7 +14,7 @@ Antes de desconectar a internet, instale Microsoft Edge, a fonte **Atkinson Hype
 - [Atkinson Hyperlegible — Braille Institute](https://www.brailleinstitute.org/freefont/): use a família original, nas variantes Regular e Bold esperadas pelo projeto.
 - Driver: obtenha no fabricante da sua impressora, para o modelo e Windows usados.
 
-O instalador da Urna é baixado em **Actions → Build Windows Installer → execução concluída com sucesso → Artifacts → Instalador-Urna-Escolar-2.3.0**. Extraia o ZIP para encontrar o EXE. Entre na conta do GitHub para baixar o artefato. Não confunda com o ZIP de código-fonte.
+O instalador da Urna é baixado em **Actions → Build Windows Installer → execução concluída com sucesso → Artifacts → Instalador-Urna-Escolar-2.4.0**. Extraia o ZIP para encontrar o EXE. Entre na conta do GitHub para baixar o artefato. Não confunda com o ZIP de código-fonte.
 
 ## Ligue os equipamentos
 
@@ -70,16 +70,6 @@ Ligar roteador e PCs → abrir Central e Urna → conferir conexão → testar o
 
 O programa usa arquivos internos instalados automaticamente. “Um arquivo” significa um único instalador entregue a você, não ausência de arquivos internos no Windows.
 
-## Publicação por pendrive e Transmissor Eleitoral
-
-A votação continua offline. Antes de lacrar, abra **Administração → Publicação e mídia USB**, salve o endereço definitivo do portal e obtenha o UUID e a impressão digital da chave. O responsável pelo portal precisa cadastrar essas referências e a credencial de transmissão; somente colocar o site no ar não autoriza os envios. Consulte [PUBLICACAO_E_PORTAL.md](PUBLICACAO_E_PORTAL.md) e [PORTAL_CLOUDFLARE.md](PORTAL_CLOUDFLARE.md).
-
-A Central copia automaticamente os documentos prontos ao detectar uma única mídia removível. Com várias mídias, escolha pela Administração. Zerésimas e BUs aguardam a confirmação de impressão. A opção **Exportar novamente** preserva os bytes e as assinaturas. Ejete o pendrive pelo Windows depois da confirmação.
-
-No computador com internet, execute o mesmo instalador, escolha **Publicação de resultados — Transmissor Eleitoral** e abra o atalho **Publicação de Resultados**. O EXE independente também continua disponível como alternativa. Não exige Python. Informe endereço, UUID, impressão digital e credencial; selecione os pacotes e confirme o envio. Não existe execução automática pelo pendrive. Guarde os comprovantes. Em falha de comunicação, preserve a mídia e repita o envio: o mesmo pacote retorna o mesmo protocolo sem duplicar votos. Não feche o transmissor durante um envio.
-
-Os comandos de manutenção do portal são executados na cópia do código-fonte, pelo responsável. Python/Node usados para manutenção ou compilação não são exigidos nos computadores de votação.
-
 ## Depois de uma eleição de teste
 
 Se quiser iniciar outra eleição e manter os usuários, senhas, vínculo da Urna e impressora, encerre a votação e use **Administrador → Histórico → Iniciar nova eleição**. Para apagar também senhas, certificados, vínculos e configurações locais, siga [RESETAR_SISTEMA.md](RESETAR_SISTEMA.md). Feche a Central e a Urna antes de executar o reset completo.
@@ -87,3 +77,12 @@ Se quiser iniciar outra eleição e manter os usuários, senhas, vínculo da Urn
 ## Limites da validação
 
 Os testes automatizados verificam lógica, vínculo, transações, recuperação e empacotamento quando executados no Windows. Não comprovam o driver da Epson, o corte, falta de papel, desempenho dos PCs da escola nem a descoberta no roteador real. Antes da eleição oficial, faça uma eleição completa de teste nos dois equipamentos. Consulte REVISAO_CODIGO.md para os resultados efetivamente obtidos nesta entrega.
+
+
+## Novidades 2.4.0
+
+CORRIGE usa **Delete** por padrão. A Administração permite capturar outra tecla antes de lacrar. Configurações antigas ainda não lacradas que usavam Backspace são migradas uma única vez; teclas personalizadas e eleições lacradas são preservadas.
+
+Zerésima e boletim usam o mesmo layout gráfico legível nos modos Windows e ESC/POS. Configure papel de 80 mm; no driver Windows, uma altura maior reduz quebras de página. Letras não são divididas entre páginas. O avanço antes do corte continua ajustável de 10 a 80 mm, padrão 30 mm.
+
+Não há QR Codes, portal, Transmissor ou solicitação de pendrive. PDF, relatórios, hashes de auditoria e histórico local continuam disponíveis.

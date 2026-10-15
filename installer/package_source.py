@@ -16,13 +16,12 @@ import zipfile
 ROOT = Path(__file__).resolve().parents[1]
 TOP_FILES = {'.gitignore', 'README.md', 'SEGURANCA.md',
              'RESETAR_PC_CENTRAL_MESA.bat', 'RESETAR_PC_URNA.bat'}
-TREES = {'.github', 'demo', 'installer', 'tests', 'docs', 'URNA_ESCOLAR_SOURCE', 'portal', 'transmitter'}
+TREES = {'.github', 'demo', 'installer', 'tests', 'docs', 'URNA_ESCOLAR_SOURCE'}
 EXTENSIONS = {'.py', '.js', '.css', '.html', '.md', '.txt', '.toml', '.ps1',
               '.spec', '.iss', '.yml', '.yaml', '.svg', '.mp3', '.json', '.sql', '.mjs', '.cjs'}
 # Reviewed documentation captures only; arbitrary election photos stay excluded.
 DOC_IMAGES = {'docs/imagens/urna-aguardando.jpg', 'docs/imagens/urna-escolha.jpg',
-              'docs/imagens/urna-confirmacao.jpg', 'docs/imagens/urna-impressao.jpg',
-              'docs/imagens/portal-publico.png'}
+              'docs/imagens/urna-confirmacao.jpg', 'docs/imagens/urna-impressao.jpg'}
 SKIP_DIRS = {'__pycache__', '.pytest_cache', 'output', 'build', 'dist',
              'test-results', '.build-venv', 'node_modules', '.wrangler'}
 PRIVATE_KEY = re.compile(rb'-----BEGIN (?:RSA |EC |ENCRYPTED |OPENSSH )?PRIVATE KEY-----\r?\n[A-Za-z0-9+/=]{20}')
@@ -46,11 +45,9 @@ def source_files(root: Path):
         if 'data' in relative.parts or 'uploads' in relative.parts:
             if path.name != '.gitkeep':
                 continue
-        elif path.suffix.lower() not in EXTENSIONS and relative.as_posix() not in DOC_IMAGES and relative.as_posix() != 'portal/Dockerfile':
+        elif path.suffix.lower() not in EXTENSIONS and relative.as_posix() not in DOC_IMAGES:
             continue
         if path.name in {'build-log.txt', 'trusted.json', 'settings.json'} or path.name.endswith('.receipt.json'):
-            continue
-        if path.suffix.lower()=='.sql' and not relative.as_posix().startswith('portal/cloudflare/migrations/'):
             continue
         content = path.read_bytes()
         if content.startswith(b'SQLite format 3\0') or PRIVATE_KEY.search(content):

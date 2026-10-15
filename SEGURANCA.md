@@ -71,6 +71,3 @@ Faça um [ensaio completo](docs/TESTES_E_VALIDACAO.md) nos equipamentos finais. 
 Para dúvidas gerais, use as [Issues](https://github.com/arturcardoalves/Urna-Eletronica-Escolar/issues) com versão, passos e mensagens já revisadas. Não publique dados de alunos, senhas, tokens, banco ou chaves. Se a falha revelar acesso indevido ou material sensível, procure um canal privado com o responsável antes de expor detalhes exploráveis.
 
 Não há, nesta documentação, alegação de auditoria independente ou de invulnerabilidade. Resultados executados, simulações e testes presenciais pendentes estão separados em [Testes e validação](docs/TESTES_E_VALIDACAO.md).
-# Publicação e portal
-
-Os pacotes públicos têm esquema restrito, Ed25519 e hashes SHA-256. A identidade depende do cadastro prévio da chave confiável, mantido fora do repositório. A chave privada não sai da Central. O portal não possui acesso ao banco eleitoral. Consulte [formato e limites da verificação](docs/PROTOCOLO_PUBLICACAO.md) e [operação e recuperação](docs/PUBLICACAO_E_PORTAL.md).
